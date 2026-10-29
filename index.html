@@ -1,0 +1,3281 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoVision AI & Smart Planet Monitor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ecoBg: '#F8FAF7',
+                        ecoSurface: '#FFFFFF',
+                        ecoBorder: '#E2E8F0',
+                        ecoPrimary: '#2E7D32',
+                        ecoPrimaryHover: '#1B5E20',
+                        ecoLightBg: '#E8F5E9',
+                        ecoText: '#1E293B',
+                        ecoMuted: '#64748B',
+                        ecoAccent: '#10B981',
+                        ecoAmber: '#D97706',
+                        ecoAmberBg: '#FEF3C7',
+                        ecoRose: '#E11D48',
+                        ecoRoseBg: '#FFE4E6'
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- TensorFlow.js + COCO-SSD (deteksi objek nyata) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #F8FAF7;
+            background-image:
+                radial-gradient(1100px 520px at 8% -8%, rgba(16, 185, 129, 0.10), transparent 60%),
+                radial-gradient(900px 460px at 100% 0%, rgba(20, 184, 166, 0.09), transparent 55%);
+            background-attachment: fixed;
+            color: #1E293B;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+        .clean-card {
+            background: #FFFFFF;
+            border: 1px solid #E5ECE7;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 20px 45px -34px rgba(15, 23, 42, 0.4);
+            border-radius: 1rem;
+        }
+        .clean-card:hover {
+            border-color: #D6E5DB;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 24px 50px -32px rgba(6, 78, 59, 0.32);
+        }
+        .clean-card-amber {
+            background: #FFFBEB;
+            border: 1px solid #FCD34D;
+            border-radius: 1rem;
+        }
+        .custom-input {
+            background-color: #F8FAF7;
+            border: 1px solid #CBD5E1;
+            transition: all 0.2s ease;
+        }
+        .custom-input:focus {
+            background-color: #FFFFFF;
+            border-color: #2E7D32;
+            box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.12);
+            outline: none;
+        }
+        .scan-line {
+            animation: scanMove 2.8s ease-in-out infinite alternate;
+        }
+        @keyframes scanMove {
+            0% { top: 6%; }
+            100% { top: 90%; }
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* ---------- Interaction layer ---------- */
+        .clean-card { transition: box-shadow 0.3s ease, border-color 0.3s ease; }
+        .reveal { opacity: 0; transform: translateY(16px); }
+        .reveal.is-visible { opacity: 1; transform: none; transition: opacity 0.55s ease, transform 0.55s ease; }
+
+        .toast-wrap { position: fixed; right: 16px; bottom: 16px; z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+        .toast {
+            display: flex; gap: 10px; align-items: flex-start;
+            min-width: 230px; max-width: 340px; padding: 12px 14px; border-radius: 12px;
+            background: #0F172A; color: #fff; font-size: 12px; font-weight: 600; line-height: 1.4;
+            box-shadow: 0 12px 30px -8px rgba(15, 23, 42, 0.45);
+            animation: toastIn 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+        }
+        .toast-success { background: #047857; }
+        .toast-warning { background: #B45309; }
+        .toast-danger { background: #BE123C; }
+        .toast-out { animation: toastOut 0.3s ease forwards; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(14px) scale(0.97); } to { opacity: 1; transform: none; } }
+        @keyframes toastOut { to { opacity: 0; transform: translateX(24px); } }
+
+        .ripple { position: absolute; border-radius: 9999px; background: rgba(16, 185, 129, 0.25); transform: scale(0); animation: rippleAnim 0.6s ease-out forwards; pointer-events: none; }
+        @keyframes rippleAnim { to { transform: scale(3.2); opacity: 0; } }
+
+        .pulse-bump { animation: bump 0.55s ease; }
+        @keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+        .fly-points {
+            position: fixed; transform: translate(-50%, 0); z-index: 75;
+            font-weight: 800; font-size: 14px; color: #059669; pointer-events: none;
+            text-shadow: 0 2px 6px rgba(255, 255, 255, 0.9);
+            animation: flyUp 1s ease-out forwards;
+        }
+        @keyframes flyUp { 0% { opacity: 1; transform: translate(-50%, 0) scale(0.9); } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1.25); } }
+
+        .badge-unlock { animation: badgePop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.4); box-shadow: 0 0 0 2px #34D399, 0 10px 22px -8px rgba(16, 185, 129, 0.6); }
+        @keyframes badgePop { 0% { transform: scale(0.9); } 55% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+        #fxCanvas { position: fixed; inset: 0; z-index: 70; pointer-events: none; display: block; }
+        #dropHint.drag-active { display: flex; }
+
+        .upcycle-tab.active { background: #ECFDF5; border-color: #6EE7B7; color: #065F46; box-shadow: 0 2px 10px -3px rgba(16, 185, 129, 0.5); }
+
+        .hazard-critical { background: #FFE4E6; color: #9F1239; }
+        .hazard-warn { background: #FEF3C7; color: #92400E; }
+        .hazard-safe { background: #D1FAE5; color: #065F46; }
+        .risk-high { background: #F43F5E; }
+        .risk-mid { background: #F59E0B; }
+        .risk-low { background: #059669; }
+
+        .aqi-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid transparent; }
+        .aqi-good { color: #047857; background: #ECFDF5; border-color: #A7F3D0; }
+        .aqi-mid { color: #B45309; background: #FFFBEB; border-color: #FDE68A; }
+
+        input[type="range"] { accent-color: #2E7D32; }
+
+        /* ---------- Premium dashboard layer ---------- */
+        .hero-card {
+            background: linear-gradient(135deg, #064E3B 0%, #047857 55%, #0F766E 100%);
+            box-shadow: 0 30px 60px -34px rgba(6, 78, 59, 0.75);
+        }
+        .hero-glow { position: absolute; border-radius: 9999px; filter: blur(60px); pointer-events: none; }
+        .hero-glow.one { width: 280px; height: 280px; background: #34D399; opacity: 0.45; top: -130px; right: 8%; }
+        .hero-glow.two { width: 240px; height: 240px; background: #A3E635; opacity: 0.22; bottom: -150px; left: 22%; }
+
+        .mission-chip {
+            display: inline-flex; align-items: center; gap: 8px; padding: 6px 11px;
+            border-radius: 9999px; background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.18); font-size: 11px; font-weight: 600;
+            color: #ECFDF5; cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+        .mission-chip:hover { background: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+        .mission-chip.done { background: rgba(16, 185, 129, 0.3); border-color: #6EE7B7; }
+        .mission-chip .mission-state { color: rgba(255, 255, 255, 0.45); }
+        .mission-chip.done .mission-state { color: #A7F3D0; }
+
+        .eco-ring { transition: stroke-dashoffset 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+
+        .stat-tab { padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; color: #64748B; transition: all 0.2s ease; }
+        .stat-tab.active { background: #FFFFFF; color: #065F46; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); }
+
+        .report-filter {
+            display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+            border-radius: 9999px; background: #F1F5F9; border: 1px solid #E2E8F0;
+            color: #64748B; cursor: pointer; transition: all 0.2s ease;
+        }
+        .report-filter:hover { border-color: #CBD5E1; color: #334155; }
+        .report-filter.active { background: #ECFDF5; border-color: #6EE7B7; color: #065F46; }
+
+        .status-chip {
+            display: inline-flex; align-items: center; font-size: 10px; font-weight: 700;
+            padding: 2px 8px; border-radius: 9999px; border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .status-new { background: #E0F2FE; color: #075985; border-color: #BAE6FD; }
+        .status-progress { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+        .status-done { background: #D1FAE5; color: #065F46; border-color: #6EE7B7; }
+        .status-bad { background: #FFE4E6; color: #9F1239; border-color: #FECDD3; }
+        .mini-status { cursor: pointer; }
+        .mini-status:hover { filter: brightness(0.96); transform: translateY(-1px); }
+
+        .j-scan { background: #ECFDF5; color: #047857; }
+        .j-report { background: #FEF3C7; color: #B45309; }
+        .j-carbon { background: #E0F2FE; color: #0369A1; }
+
+        .calc-range { width: 100%; cursor: pointer; accent-color: #2E7D32; }
+        .calc-ok { background: #10B981; }
+        .calc-warn { background: #F59E0B; }
+        .calc-bad { background: #F43F5E; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .scan-line, .animate-pulse, .animate-ping { animation: none !important; }
+            .reveal { opacity: 1; transform: none; }
+            .eco-ring, .mission-chip { transition: none; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-12">
+
+    <!-- TOP HEADER NAVBAR -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3.5 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700">
+                    <i class="fa-solid fa-seedling text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                        EcoVision AI <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium">Smart Planet Monitor</span>
+                    </h1>
+                    <p class="text-xs text-slate-500">Platform Deteksi Lingkungan, Daur Ulang & Monitor Karbon Real-time</p>
+                </div>
+            </div>
+
+            <!-- Global Metric Counters -->
+            <div class="flex flex-wrap justify-end items-center gap-3">
+                <div class="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold">
+                    <div id="statCO2Box" class="flex items-center gap-2 text-emerald-700" title="Karbon Terselamatkan">
+                        <i class="fa-solid fa-leaf text-base"></i>
+                        <span><strong id="headerCO2" class="text-sm">0.0</strong> kg CO₂e</span>
+                    </div>
+                    <div class="h-4 w-px bg-slate-200"></div>
+                    <div id="statWasteBox" class="flex items-center gap-2 text-teal-700" title="Sampah Terkelola">
+                        <i class="fa-solid fa-recycle text-base"></i>
+                        <span><strong id="headerWaste" class="text-sm">0.0</strong> kg Sampah</span>
+                    </div>
+                    <div class="h-4 w-px bg-slate-200"></div>
+                    <div id="statPointsBox" class="flex items-center gap-2 text-amber-700" title="Eco Points">
+                        <i class="fa-solid fa-award text-base"></i>
+                        <span><strong id="headerPoints" class="text-sm">0</strong> Pts</span>
+                    </div>
+                </div>
+
+                <button onclick="toggleAudio()" id="btnAudioToggle" class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-xs text-slate-700 font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-volume-high text-emerald-700"></i> <span id="sfxLabel">SFX: Aktif</span>
+                </button>
+                <button onclick="resetAllData()" title="Reset data demo" aria-label="Reset data demo" class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-rose-50 hover:border-rose-200 hover:text-rose-700 text-xs text-slate-700 font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-left"></i>
+                </button>
+
+                <!-- SESSION / USER AREA -->
+                <div id="authArea" class="flex items-center"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APP LAYOUT -->
+    <main class="max-w-7xl mx-auto px-4 mt-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- HERO: ECO SCORE, MISSIONS & LIVE TELEMETRY -->
+        <section class="lg:col-span-12 hero-card rounded-2xl px-5 py-5 md:px-6 md:py-6 text-white relative overflow-hidden">
+            <div class="hero-glow one"></div>
+            <div class="hero-glow two"></div>
+
+            <div class="relative grid gap-6 lg:grid-cols-12 lg:items-center">
+                <div class="lg:col-span-7 space-y-3">
+                    <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200/90">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+                        Ringkasan Hari Ini · <span id="heroDate">—</span>
+                    </div>
+                    <h2 class="text-xl md:text-2xl font-extrabold leading-snug">Lingkungan lebih sehat dimulai dari satu aksi kecil.</h2>
+                    <p class="text-[11px] md:text-xs text-emerald-100/80 max-w-lg leading-relaxed">Selesaikan misi harian, catat dampak nyata, dan pantau skor keberlanjutanmu bersama warga sekitar.</p>
+
+                    <div id="missionList" class="flex flex-wrap gap-2 pt-1"></div>
+
+                    <div class="flex items-center gap-3 pt-1 max-w-sm">
+                        <div class="flex-1 h-1.5 bg-white/15 rounded-full overflow-hidden">
+                            <div id="missionBar" class="h-full w-0 bg-gradient-to-r from-emerald-300 to-lime-300 rounded-full transition-all duration-500"></div>
+                        </div>
+                        <span id="missionProgressText" class="text-[10px] font-semibold text-emerald-100/90 whitespace-nowrap">0/3 misi selesai</span>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 flex flex-wrap items-center justify-center lg:justify-end gap-5">
+                    <div class="relative w-32 h-32 shrink-0">
+                        <svg viewBox="0 0 120 120" class="w-32 h-32 -rotate-90">
+                            <defs>
+                                <linearGradient id="ecoRingGrad" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stop-color="#6EE7B7"></stop>
+                                    <stop offset="100%" stop-color="#D9F99D"></stop>
+                                </linearGradient>
+                            </defs>
+                            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="10"></circle>
+                            <circle id="ecoScoreRing" class="eco-ring" cx="60" cy="60" r="52" fill="none" stroke="url(#ecoRingGrad)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="ecoScoreValue" class="text-2xl font-extrabold leading-none">0</span>
+                            <span class="text-[9px] uppercase tracking-[0.18em] text-emerald-200/80 mt-1">EcoScore</span>
+                        </div>
+                    </div>
+                    <div class="space-y-1 max-w-[190px] text-center lg:text-left">
+                        <div class="text-[10px] uppercase tracking-[0.18em] font-bold text-emerald-200/80">Peringkat Hijau</div>
+                        <div id="ecoRank" class="text-lg font-extrabold">Pemula</div>
+                        <p id="ecoHint" class="text-[11px] text-emerald-100/75 leading-relaxed">Catat aksi pertamamu untuk mulai menaikkan skor.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="relative mt-5 pt-3 border-t border-white/10 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-emerald-50/90">
+                <span class="flex items-center gap-2 font-bold text-white">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-300 opacity-60"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
+                    </span>
+                    Sensor Live
+                </span>
+                <span class="text-emerald-100/75">CO₂ Udara <strong id="liveCO2" class="text-white font-mono">418</strong> ppm</span>
+                <span class="text-emerald-100/75 flex items-center gap-1.5">PM2.5 <strong id="livePM25" class="text-white font-mono">12.0</strong> µg/m³
+                    <span id="liveAQI" class="aqi-badge aqi-good">Baik</span>
+                </span>
+                <span class="text-emerald-100/75">Suhu <strong id="liveTemp" class="text-white font-mono">29.0</strong> °C</span>
+                <span class="text-emerald-100/75">Kelembapan <strong id="liveHum" class="text-white font-mono">68</strong> %</span>
+                <span class="ml-auto text-emerald-100/70 font-mono flex items-center gap-1.5"><i class="fa-regular fa-clock"></i><span id="liveClock">--:--:--</span></span>
+            </div>
+        </section>
+
+        <!-- LEFT SECTION: CAMERA SCANNER & ANALYZER (7 Cols) -->
+        <section class="lg:col-span-7 space-y-6">
+            
+            <!-- ECOSCAN AI CAMERA CONTAINER -->
+            <div class="clean-card p-4 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-camera text-emerald-700"></i>
+                        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Pemindai AI Kamera Lingkungan (EcoScan)</h2>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="scanStatusBadge" class="bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Memuat Model AI...
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Video / Canvas Viewport -->
+                <div id="viewport" class="relative w-full rounded-xl overflow-hidden bg-slate-900 aspect-video flex items-center justify-center border border-slate-200 shadow-inner group transition-colors duration-300">
+                    
+                    <video id="webcamVideo" autoplay playsinline class="hidden"></video>
+                    <canvas id="visionCanvas" class="w-full h-full object-contain block"></canvas>
+                    <img id="uploadedImage" class="hidden w-full h-full object-contain" alt="Pratinjau Unggahan" />
+
+                    <!-- Scan overlay grid lines -->
+                    <div id="scannerOverlay" class="absolute inset-0 pointer-events-none">
+                        <div class="absolute w-full h-0.5 bg-emerald-400 shadow-[0_0_8px_#10B981] scan-line opacity-80"></div>
+                        <div class="absolute top-3 left-3 bg-slate-900/80 backdrop-blur-sm text-white px-3 py-1 rounded-lg text-xs font-mono border border-slate-700">
+                            AI RETICLE: <span id="cameraResolutionText" class="text-emerald-400">1280x720</span>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder Permission Card -->
+                    <div id="cameraPlaceholder" class="absolute inset-0 bg-slate-800/95 flex flex-col items-center justify-center text-center p-6 space-y-3 z-10">
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl">
+                            <i class="fa-solid fa-video"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-white">Aktifkan Kamera atau Unggah Foto</h3>
+                        <p class="text-xs text-slate-300 max-w-sm">Izinkan akses webcam untuk memindai sampah, genangan air, atau bahan yang dapat didaur ulang secara langsung.</p>
+                        
+                        <div class="flex flex-wrap justify-center gap-2 pt-2">
+                            <button onclick="startWebcam()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition flex items-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-camera"></i> Gunakan Kamera
+                            </button>
+                            <label class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold text-xs transition cursor-pointer flex items-center gap-2 border border-slate-600">
+                                <i class="fa-solid fa-upload"></i> Unggah Gambar
+                                <input type="file" id="fileInput" accept="image/*" onchange="handleFileUpload(event)" class="hidden">
+                            </label>
+                            <button onclick="enableDemoMode()" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-black text-emerald-400 font-semibold text-xs transition border border-emerald-500/30">
+                                <i class="fa-solid fa-flask"></i> Mode Simulasi
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Flash indicator -->
+                    <div id="flashOverlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-20"></div>
+
+                    <!-- AI Scanning Progress Overlay -->
+                    <div id="scanProgress" class="absolute inset-0 z-30 bg-slate-900/90 backdrop-blur-sm hidden flex flex-col items-center justify-center gap-3">
+                        <div class="text-emerald-400 text-3xl"><i class="fa-solid fa-microchip animate-pulse"></i></div>
+                        <div id="scanStepText" class="text-white text-xs font-semibold tracking-wide">Menyiapkan model AI…</div>
+                        <div class="w-56 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div id="scanProgressBar" class="h-full w-0 bg-emerald-500 transition-[width] duration-150"></div>
+                        </div>
+                        <div id="scanPercent" class="text-[11px] font-mono text-slate-300">0%</div>
+                    </div>
+
+                    <!-- Drag & drop hint -->
+                    <div id="dropHint" class="absolute inset-2 z-30 hidden flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-emerald-400 bg-emerald-900/60 backdrop-blur-sm pointer-events-none">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-emerald-300"></i>
+                        <p class="text-xs font-semibold text-white">Lepaskan gambar di sini untuk dianalisis</p>
+                    </div>
+
+                    <!-- Live COCO-SSD detection -->
+                    <div id="liveDetectChip" class="hidden absolute bottom-3 left-3 z-20 items-center gap-2 bg-slate-900/85 backdrop-blur-sm border border-emerald-500/40 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg pointer-events-none">
+                        <i class="fa-solid fa-crosshairs text-emerald-400"></i><span id="liveDetectText">Menyiapkan model…</span>
+                    </div>
+                </div>
+
+                <!-- Control Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div class="flex items-center gap-2">
+                        <button id="btnScan" onclick="captureAndAnalyze()" disabled title="Model AI sedang dimuat..." class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-60 disabled:cursor-wait text-white font-bold text-xs uppercase tracking-wider transition flex items-center gap-2 shadow-lg shadow-emerald-700/25">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Memuat Model AI...
+                        </button>
+                        <button id="btnStopCam" onclick="stopWebcam()" class="hidden px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 border border-slate-200 text-slate-600 font-semibold text-xs transition flex items-center gap-1.5" title="Matikan kamera">
+                            <i class="fa-solid fa-video-slash"></i> Stop
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-500 font-medium">Target Objek:</label>
+                        <select id="targetSelect" onchange="changeTargetObject(this.value)" class="custom-input text-xs font-semibold text-slate-700 rounded-xl px-3 py-2 cursor-pointer">
+                            <option value="auto">🤖 Deteksi Otomatis AI</option>
+                            <option value="plastic">🥤 Botol Plastik / Wadah PET</option>
+                            <option value="ewaste">🔋 Limbah Elektronik / Baterai</option>
+                            <option value="organic">🍎 Sampah Organik / Sisa Makanan</option>
+                            <option value="paper">📦 Kardus / Kertas Bekas</option>
+                            <option value="water">🦟 Genangan Air (Vektor Nyamuk)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DETECTED IMPACT & DISPOSAL GUIDELINES -->
+            <div id="resultPanel" class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass-chart text-emerald-700"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Hasil Diagnosis Lingkungan AI</h3>
+                    </div>
+                    <span id="resultHazardBadge" class="bg-slate-100 text-slate-600 text-[11px] font-bold px-3 py-1 rounded-full">
+                        Belum Ada Pemindaian
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Left: Technical Metrics -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <div>
+                            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Objek Terklasifikasi</span>
+                            <h4 id="resTitle" class="text-base font-bold text-slate-800">Silakan Ambil Foto / Scan</h4>
+                            <p id="resConfidence" class="text-xs text-emerald-700 font-medium mt-0.5">Akurasi AI: -</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                <span class="text-[10px] text-slate-400 block font-medium">Estimasi Urai Alam</span>
+                                <span id="resDecomp" class="font-bold text-slate-700">-</span>
+                            </div>
+                            <div class="bg-white p-2.5 rounded-lg border border-slate-200">
+                                <span class="text-[10px] text-slate-400 block font-medium">Potensi Hemat CO₂e</span>
+                                <span id="resCO2" class="font-bold text-emerald-700">-</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-500">Jumlah Objek dalam Frame</span>
+                                <span class="text-emerald-700 font-mono"><span id="resQtyLabel">1</span> ×</span>
+                            </div>
+                            <input id="qtySlider" type="range" min="1" max="10" value="1" step="1" class="w-full cursor-pointer" aria-label="Jumlah objek">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-500">Tingkat Risiko Lingkungan</span>
+                                <span class="text-slate-700"><span id="resRiskPercent">0</span>%</span>
+                            </div>
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div id="resRiskBar" class="risk-low h-full w-0 transition-all duration-500"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Actionable Guidelines -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+                        <div>
+                            <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Panduan Pengolahan Tepat</span>
+                            <p id="resGuide" class="text-xs text-slate-600 leading-relaxed">
+                                Lakukan pemindaian objek menggunakan tombol di atas untuk mendapatkan petunjuk penanganan, pengolahan daur ulang, dan estimasi nilai emisi karbon.
+                            </p>
+                        </div>
+
+                        <button id="btnSaveAction" onclick="saveEcoAction()" disabled class="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs transition uppercase tracking-wider shadow-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus-circle"></i> Catat Aksi Lingkungan Ini (+Poin)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GREEN ACTION JOURNAL -->
+            <div class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-emerald-700"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Jurnal Aksi Lingkungan</h3>
+                    </div>
+                    <span id="journalCount" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">0 aktivitas</span>
+                </div>
+                <div id="journalList" class="space-y-3 max-h-64 overflow-y-auto pr-1">
+                    <div class="text-xs text-slate-400 text-center py-6">Belum ada aktivitas tercatat. Mulai dari scan objek pertamamu.</div>
+                </div>
+            </div>
+
+            <!-- COMMUNITY ECO-HAZARD REPORTER -->
+            <div id="reportCard" class="clean-card p-5 space-y-4 border-l-4 border-l-amber-500">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Pelaporan Bahaya Lingkungan Warga</h3>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                        <span id="cloudStatusBadge" class="hidden items-center gap-1 bg-sky-50 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded border border-sky-200" title="Laporan komunitas tersinkron ke cloud">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> TERSINKRON
+                        </span>
+                        <span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-0.5 rounded-md">
+                            PEMANTAUAN KOMUNITAS
+                        </span>
+                    </div>
+                </div>
+
+                <form onsubmit="submitHazardReport(event)" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600 block mb-1">Jenis Masalah / Pelanggaran</label>
+                        <select id="reportType" required class="w-full custom-input text-xs font-medium rounded-xl p-2.5">
+                            <option value="Pembuangan Sampah Liar">🚯 Tumpukan Sampah Liar</option>
+                            <option value="Drainase Tumpat & Genangan Air">🌊 Drainase Tersumbat / Genangan Air</option>
+                            <option value="Limbah Elektronik & Bahan Kimia">⚠️ Limbah B3 / E-Waste Sembarangan</option>
+                            <option value="Pemborosan Lampu Fasilitas">💡 Pemborosan Listrik Fasilitas Umum</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-semibold text-slate-600 block mb-1">Lokasi Detail / RT RW</label>
+                        <input type="text" id="reportLocation" required placeholder="Cth: Jl. Melati No. 14 / RT 02" class="w-full custom-input text-xs font-medium rounded-xl p-2.5">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-semibold text-slate-600 block mb-1">Deskripsi Kondisi & Catatan</label>
+                        <textarea id="reportDesc" required placeholder="Tuliskan keterangan detail agar dapat ditindaklanjuti warga/petugas..." class="w-full custom-input text-xs font-medium rounded-xl p-2.5 h-20 resize-none"></textarea>
+                    </div>
+
+                    <div class="md:col-span-2 flex justify-between items-center pt-1">
+                        <span class="text-[11px] text-slate-500">* Laporan dapat diekspor menjadi berkas laporan resmi.</span>
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm">
+                            <i class="fa-solid fa-paper-plane mr-1"></i> Kirim Laporan
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </section>
+
+
+        <!-- RIGHT SECTION: DASHBOARD, UPCYCLING & BADGES (5 Cols) -->
+        <section class="lg:col-span-5 space-y-6">
+            
+            <!-- STATS: COMPOSITION & 7-DAY TREND -->
+            <div class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3 gap-2 flex-wrap">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-700"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Statistik & Tren Dampak</h3>
+                    </div>
+                    <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                        <button type="button" data-tab="composition" class="stat-tab active" onclick="switchStatsTab('composition')">Komposisi</button>
+                        <button type="button" data-tab="trend" class="stat-tab" onclick="switchStatsTab('trend')">Tren 7 Hari</button>
+                    </div>
+                </div>
+
+                <div class="relative w-full h-52">
+                    <div id="statsComposition" class="absolute inset-0 flex justify-center items-center">
+                        <canvas id="categoryChart"></canvas>
+                        <div id="chartEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center pointer-events-none">
+                            <i class="fa-solid fa-chart-pie text-slate-300 text-2xl"></i>
+                            <p class="text-[11px] text-slate-400 font-medium">Belum ada data pemindaian.<br>Scan objek untuk mengisi grafik.</p>
+                        </div>
+                    </div>
+                    <div id="statsTrend" class="absolute inset-0 hidden flex justify-center items-center">
+                        <canvas id="trendChart"></canvas>
+                        <div id="trendEmpty" class="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center pointer-events-none">
+                            <i class="fa-solid fa-chart-column text-slate-300 text-2xl"></i>
+                            <p class="text-[11px] text-slate-400 font-medium">Belum ada aktivitas 7 hari terakhir.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap justify-between gap-2 text-[10px] text-slate-400 font-medium border-t border-slate-100 pt-3">
+                    <span>Total pemindaian: <strong id="totalScans" class="text-slate-700">0</strong></span>
+                    <span>CO₂e diselamatkan: <strong id="totalSaved" class="text-emerald-700">0.0 kg</strong></span>
+                </div>
+            </div>
+
+            <!-- CARBON FOOTPRINT CALCULATOR -->
+            <div id="carbonCard" class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-emerald-700"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Kalkulator Jejak Karbon</h3>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded">SIMULASI HARIAN</span>
+                </div>
+
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-slate-600">Listrik rumah</span>
+                            <span class="font-mono text-emerald-700"><span id="calcKwhVal">120</span> kWh/bln</span>
+                        </div>
+                        <input id="calcKwh" type="range" min="0" max="600" step="10" value="120" oninput="updateFootprintCalc()" class="calc-range" aria-label="Pemakaian listrik per bulan">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-slate-600">Perjalanan kendaraan</span>
+                            <span class="font-mono text-emerald-700"><span id="calcKmVal">10</span> km/hari</span>
+                        </div>
+                        <input id="calcKm" type="range" min="0" max="80" step="5" value="10" oninput="updateFootprintCalc()" class="calc-range" aria-label="Jarak perjalanan per hari">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-slate-600">Sampah tidak terpilah</span>
+                            <span class="font-mono text-emerald-700"><span id="calcWasteVal">0.5</span> kg/hari</span>
+                        </div>
+                        <input id="calcWaste" type="range" min="0" max="4" step="0.25" value="0.5" oninput="updateFootprintCalc()" class="calc-range" aria-label="Sampah tidak terpilah per hari">
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
+                    <div class="flex items-end justify-between gap-2 flex-wrap">
+                        <div>
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">Estimasi Emisi Harian</span>
+                            <span class="text-xl font-extrabold text-slate-800"><span id="calcTotal">5.7</span> <span class="text-xs font-semibold text-slate-500">kg CO₂e</span></span>
+                        </div>
+                        <span id="calcVerdict" class="status-chip status-done">Di bawah target</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div id="calcBar" class="calc-ok h-full w-0 transition-all duration-500"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-400 font-medium">
+                        <span>0</span>
+                        <span>Target aman 7.5 kg/hari</span>
+                        <span>12 kg</span>
+                    </div>
+                    <p id="calcTip" class="text-[11px] text-slate-600 leading-relaxed">Geser slider untuk melihat estimasi dan rekomendasi.</p>
+                </div>
+
+                <div class="flex items-center justify-between gap-2">
+                    <span id="footprintSaved" class="text-[10px] text-slate-400 font-medium leading-snug">Belum ada jejak tersimpan hari ini.</span>
+                    <button id="btnSaveCarbon" onclick="saveFootprint()" class="shrink-0 px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] uppercase tracking-wider transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan
+                    </button>
+                </div>
+            </div>
+
+            <!-- DIY UPCYCLING IDEAS GENERATOR -->
+            <div class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Ide Kreasi Daur Ulang (DIY Upcycling)</h3>
+                    </div>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded">MODUL KREATIF</span>
+                </div>
+
+                <div class="space-y-3">
+                    <label class="text-xs font-semibold text-slate-600 block">Pilih Bahan Sampah yang Ada di Rumah:</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button data-type="plastic" onclick="filterUpcycle('plastic')" class="upcycle-tab py-2 px-2 text-center rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 text-xs font-semibold text-slate-700 transition">
+                            Botol Plastik
+                        </button>
+                        <button data-type="cardboard" onclick="filterUpcycle('cardboard')" class="upcycle-tab py-2 px-2 text-center rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 text-xs font-semibold text-slate-700 transition">
+                            Kardus Bekas
+                        </button>
+                        <button data-type="ewaste" onclick="filterUpcycle('ewaste')" class="upcycle-tab py-2 px-2 text-center rounded-xl bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200 text-xs font-semibold text-slate-700 transition">
+                            Kabel / E-Waste
+                        </button>
+                    </div>
+
+                    <!-- Idea Output Card -->
+                    <div id="upcycleOutputCard" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                        <div class="font-bold text-emerald-800 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-hammer"></i> <span id="upcTitle">Pot Tanaman Hidroponik Sederhana</span>
+                        </div>
+                        <p id="upcDesc" class="text-xs text-slate-600 leading-relaxed">
+                            Potong botol plastik bekas menjadi dua bagian. Gunakan bagian atas terbalik yang diberi kain flanel sebagai penyerap air nutrisi untuk menanam sayuran hidroponik.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UNLOCKED BADGES & ECO ACHIEVEMENTS -->
+            <div class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-award text-amber-500"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Pencapaian & Lencana Hijau</h3>
+                    </div>
+                    <span id="badgeCounterText" class="text-xs text-amber-700 font-bold">0 / 4 Terbuka</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div id="badgeCard1" class="p-3 rounded-xl bg-slate-50 border border-slate-200 opacity-40 transition flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-base">
+                            <i class="fa-solid fa-leaf"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Eco Starter</div>
+                            <div class="text-[10px] text-slate-500">1 Aksi Dicatat</div>
+                        </div>
+                    </div>
+
+                    <div id="badgeCard2" class="p-3 rounded-xl bg-slate-50 border border-slate-200 opacity-40 transition flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center text-base">
+                            <i class="fa-solid fa-recycle"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Recycle Master</div>
+                            <div class="text-[10px] text-slate-500">2kg Sampah Olah</div>
+                        </div>
+                    </div>
+
+                    <div id="badgeCard3" class="p-3 rounded-xl bg-slate-50 border border-slate-200 opacity-40 transition flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-base">
+                            <i class="fa-solid fa-earth-americas"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Carbon Guard</div>
+                            <div class="text-[10px] text-slate-500">3kg CO₂e Hemat</div>
+                        </div>
+                    </div>
+
+                    <div id="badgeCard4" class="p-3 rounded-xl bg-slate-50 border border-slate-200 opacity-40 transition flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-base">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-800">Pelapor Warga</div>
+                            <div class="text-[10px] text-slate-500">1 Laporan Dikirim</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COMMUNITY HAZARD REPORTS LOG LIST -->
+            <div class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-slate-700"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Daftar Laporan Bahaya Warga</h3>
+                    </div>
+                    <button onclick="exportCSV()" class="text-xs text-emerald-700 hover:underline font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-file-csv"></i> Ekspor CSV
+                    </button>
+                </div>
+
+                <div id="reportFilters" class="flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
+                    <button type="button" data-filter="all" onclick="setReportFilter('all')" class="report-filter active">Semua <span id="cntAll" class="opacity-70">0</span></button>
+                    <button type="button" data-filter="baru" onclick="setReportFilter('baru')" class="report-filter">Baru <span id="cntNew" class="opacity-70">0</span></button>
+                    <button type="button" data-filter="proses" onclick="setReportFilter('proses')" class="report-filter">Diproses <span id="cntProgress" class="opacity-70">0</span></button>
+                    <button type="button" data-filter="selesai" onclick="setReportFilter('selesai')" class="report-filter">Selesai <span id="cntDone" class="opacity-70">0</span></button>
+                </div>
+
+                <div id="reportsList" class="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                    <div class="text-xs text-slate-400 text-center py-6">Belum ada laporan bahaya lingkungan tersimpan.</div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- AUTH / LOGIN MODAL -->
+    <div id="authModal" class="hidden fixed inset-0 z-[60] items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAuthModal()"></div>
+        <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                    </div>
+                    <div>
+                        <h2 id="authModalTitle" class="text-sm font-bold text-slate-800">Masuk ke EcoVision</h2>
+                        <p class="text-[11px] text-slate-400">Masuk untuk menyinkronkan laporan & jurnal.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeAuthModal()" aria-label="Tutup dialog" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <button type="button" id="btnGoogleLogin" onclick="loginWithGoogle()" class="w-full py-2.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs transition flex items-center justify-center gap-2.5 shadow-sm">
+                <svg class="w-4 h-4" viewBox="0 0 48 48" aria-hidden="true">
+                    <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z"/>
+                    <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.2 6.1 29.4 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+                    <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+                    <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.7-.4-3.9z"/>
+                </svg>
+                Lanjutkan dengan Google
+            </button>
+
+            <button type="button" id="btnGithubLogin" onclick="loginWithGithub()" class="w-full py-2.5 rounded-xl bg-[#24292F] hover:bg-[#1B1F23] border border-[#24292F] text-white font-bold text-xs transition flex items-center justify-center gap-2.5 shadow-sm">
+                <i class="fa-brands fa-github text-base"></i>
+                Lanjutkan dengan GitHub
+            </button>
+
+            <div class="flex items-start gap-2 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                <i id="cloudModeIcon" class="fa-solid fa-cloud mt-0.5 text-slate-400"></i>
+                <span id="authModeNote">Firebase belum dikonfigurasi — tombol provider memakai akun demo lokal.</span>
+            </div>
+
+            <p id="authError" class="hidden text-[11px] font-semibold text-rose-600"></p>
+
+            <div id="demoLoginSection" class="space-y-3">
+                <div class="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                    <span class="flex-1 h-px bg-slate-200"></span> atau masuk demo lokal <span class="flex-1 h-px bg-slate-200"></span>
+                </div>
+
+            <form id="emailLoginForm" onsubmit="submitEmailLogin(event)" class="space-y-3">
+                <div>
+                    <label for="loginName" class="text-xs font-semibold text-slate-600 block mb-1">Nama tampilan</label>
+                    <input id="loginName" type="text" required maxlength="40" autocomplete="name" placeholder="Cth: Sari Wulandari" class="w-full custom-input text-xs font-medium rounded-xl p-2.5">
+                </div>
+                <div>
+                    <label for="loginEmail" class="text-xs font-semibold text-slate-600 block mb-1">Email</label>
+                    <input id="loginEmail" type="email" required maxlength="80" autocomplete="email" placeholder="nama@email.com" class="w-full custom-input text-xs font-medium rounded-xl p-2.5">
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-to-bracket"></i> Masuk dengan Email
+                </button>
+            </form>
+            </div>
+
+            <p class="text-[10px] text-slate-400 leading-relaxed text-center">Mode demo menyimpan sesi di localStorage perangkat ini. Isi <span class="font-mono">FIREBASE_CONFIG</span> untuk mengaktifkan login Google/GitHub dan sinkronisasi cloud.</p>
+        </div>
+    </div>
+
+    <!-- TOASTS & CONFETTI LAYER -->
+    <div id="toastWrap" class="toast-wrap" aria-live="polite"></div>
+    <canvas id="fxCanvas"></canvas>
+
+    <!-- AUDIO & SCRIPT LOGIC ENGINE -->
+    <script>
+        /* State Variables */
+        let webcamStream = null;
+        let audioEnabled = true;
+        let activeTargetKey = 'auto';
+        let lastAnalyzedObject = null;
+        let categoryChartInstance = null;
+        let trendChartInstance = null;
+        let reportFilter = 'all';
+        let detector = null;
+        let detectorLoading = null;
+        let detectorError = null;
+        let liveDetectTimer = null;
+        let lastDetections = [];
+        const SESSION_KEY = 'ecovision_session';
+        let currentUser = null;
+
+        /* Firebase: isi nilai dari Firebase Console (Project settings → Your apps).
+           Selama masih kosong, aplikasi otomatis memakai mode demo lokal. */
+        const FIREBASE_CONFIG = {
+            apiKey: '',
+            authDomain: '',
+            projectId: '',
+            storageBucket: '',
+            messagingSenderId: '',
+            appId: ''
+        };
+        window.FIREBASE_CONFIG = FIREBASE_CONFIG;
+
+        const cloudState = {
+            configured: false,
+            ready: false,
+            journalTimer: null,
+            restored: false
+        };
+
+        function createInitialState() {
+            return {
+                totalCO2: 0.0,
+                totalWaste: 0.0,
+                points: 0,
+                reportCount: 0,
+                counts: { plastic: 0, ewaste: 0, organic: 0, paper: 0, water: 0 },
+                unlocked: [],
+                history: [],
+                footprint: null,
+                missions: { date: '', scan: 0, report: 0, carbon: 0, bonus: false }
+            };
+        }
+
+        let ecoState = createInitialState();
+
+        let hazardReports = [];
+
+        const MISSIONS = [
+            { key: 'scan', icon: 'fa-camera', title: 'Simpan 1 aksi scan', target: 1, anchor: 'resultPanel' },
+            { key: 'report', icon: 'fa-paper-plane', title: 'Kirim 1 laporan warga', target: 1, anchor: 'reportCard' },
+            { key: 'carbon', icon: 'fa-calculator', title: 'Catat jejak karbon', target: 1, anchor: 'carbonCard' }
+        ];
+
+        const STATUS_META = {
+            baru: { label: 'Baru', cls: 'status-new' },
+            proses: { label: 'Diproses', cls: 'status-progress' },
+            selesai: { label: 'Selesai', cls: 'status-done' }
+        };
+
+        /* ---------------- Interaction helpers ---------------- */
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const fxCanvas = document.getElementById('fxCanvas');
+        const fxCtx = fxCanvas ? fxCanvas.getContext('2d') : null;
+
+        function showToast(message, type = 'info') {
+            const wrap = document.getElementById('toastWrap');
+            if (!wrap) return;
+            const icons = { success: 'fa-circle-check', warning: 'fa-triangle-exclamation', danger: 'fa-circle-xmark', info: 'fa-circle-info' };
+            const el = document.createElement('div');
+            el.className = `toast toast-${type}`;
+            const icon = document.createElement('i');
+            icon.className = `fa-solid ${icons[type] || icons.info} mt-0.5`;
+            const text = document.createElement('span');
+            text.className = 'flex-1 leading-snug';
+            text.textContent = message;
+            el.append(icon, text);
+            wrap.appendChild(el);
+            setTimeout(() => {
+                el.classList.add('toast-out');
+                el.addEventListener('animationend', () => el.remove(), { once: true });
+            }, 3400);
+        }
+
+        function animateValue(el, to, decimals = 0, duration = 600) {
+            if (!el) return;
+            const target = Number(to) || 0;
+            const from = parseFloat(String(el.textContent).replace(/[^\d.-]/g, '')) || 0;
+            const token = (el._animToken = (el._animToken || 0) + 1);
+            if (reduceMotion || Math.abs(target - from) < 0.001) {
+                el.textContent = target.toFixed(decimals);
+                return;
+            }
+            const start = performance.now();
+            const step = (now) => {
+                if (token !== el._animToken) return;
+                const p = Math.min(1, (now - start) / duration);
+                const eased = 1 - Math.pow(1 - p, 3);
+                el.textContent = (from + (target - from) * eased).toFixed(decimals);
+                if (p < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+            setTimeout(() => {
+                if (token === el._animToken) el.textContent = target.toFixed(decimals);
+            }, duration + 80);
+        }
+
+        function flyText(anchor, text) {
+            if (!anchor || reduceMotion) return;
+            const rect = anchor.getBoundingClientRect();
+            const span = document.createElement('span');
+            span.className = 'fly-points';
+            span.textContent = text;
+            span.style.left = `${rect.left + rect.width / 2}px`;
+            span.style.top = `${rect.top - 6}px`;
+            document.body.appendChild(span);
+            span.addEventListener('animationend', () => span.remove(), { once: true });
+        }
+
+        function sizeFxCanvas() {
+            if (!fxCanvas) return;
+            fxCanvas.width = window.innerWidth;
+            fxCanvas.height = window.innerHeight;
+        }
+
+        function burstConfetti(count = 80) {
+            if (!fxCtx || reduceMotion) return;
+            sizeFxCanvas();
+            const colors = ['#10B981', '#34D399', '#A3E635', '#F59E0B', '#38BDF8'];
+            const originX = window.innerWidth / 2;
+            const originY = window.innerHeight / 2;
+            const parts = Array.from({ length: count }, () => ({
+                x: originX, y: originY,
+                vx: (Math.random() - 0.5) * 14,
+                vy: -Math.random() * 12 - 3,
+                size: 3 + Math.random() * 5,
+                color: colors[(Math.random() * colors.length) | 0],
+                rot: Math.random() * Math.PI,
+                vr: (Math.random() - 0.5) * 0.35,
+                life: 1
+            }));
+            let frame = 0;
+            const tick = () => {
+                fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+                let alive = false;
+                parts.forEach(p => {
+                    p.vy += 0.35;
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.rot += p.vr;
+                    p.life -= 0.012;
+                    if (p.life > 0) alive = true;
+                    fxCtx.save();
+                    fxCtx.globalAlpha = Math.max(0, p.life);
+                    fxCtx.translate(p.x, p.y);
+                    fxCtx.rotate(p.rot);
+                    fxCtx.fillStyle = p.color;
+                    fxCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                    fxCtx.restore();
+                });
+                frame++;
+                if (alive && frame < 180) requestAnimationFrame(tick);
+                else fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+            };
+            tick();
+        }
+
+        window.addEventListener('resize', sizeFxCanvas);
+
+        function localDateKey(date = new Date()) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function timeAgo(ts) {
+            const minutes = Math.floor((Date.now() - ts) / 60000);
+            if (minutes < 1) return 'baru saja';
+            if (minutes < 60) return `${minutes} mnt lalu`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours} jam lalu`;
+            return `${Math.floor(hours / 24)} hari lalu`;
+        }
+
+        function jumpTo(id) {
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+        }
+
+        /* ---------- Session, Firebase auth & cloud sync helpers ---------- */
+        function initialsOf(name) {
+            return String(name || '')
+                .trim()
+                .split(/\s+/)
+                .slice(0, 2)
+                .map(part => part.charAt(0).toUpperCase())
+                .join('') || '?';
+        }
+
+        function safePhotoUrl(url) {
+            try {
+                const parsed = new URL(String(url));
+                return parsed.protocol === 'https:' ? parsed.href : '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        function loadSession() {
+            try {
+                const raw = localStorage.getItem(SESSION_KEY);
+                const parsed = raw ? JSON.parse(raw) : null;
+                if (parsed && typeof parsed.name === 'string' && parsed.name.trim() && typeof parsed.email === 'string') {
+                    currentUser = parsed;
+                }
+            } catch (e) {
+                currentUser = null;
+            }
+            renderAuth();
+        }
+
+        function renderAuth() {
+            const area = document.getElementById('authArea');
+            if (!area) return;
+            area.innerHTML = '';
+
+            if (!currentUser) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'px-3 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5 shadow-sm';
+                btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
+                btn.addEventListener('click', openAuthModal);
+                area.appendChild(btn);
+                return;
+            }
+
+            const chip = document.createElement('div');
+            chip.className = 'flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl pl-1 pr-1 py-1';
+            chip.title = `${currentUser.name}${currentUser.email ? ' · ' + currentUser.email : ''}`;
+
+            const photo = safePhotoUrl(currentUser.photo);
+            let avatar;
+            if (photo) {
+                avatar = document.createElement('img');
+                avatar.src = photo;
+                avatar.alt = `Foto profil ${currentUser.name}`;
+                avatar.referrerPolicy = 'no-referrer';
+                avatar.className = 'w-7 h-7 rounded-lg object-cover shrink-0 border border-slate-200';
+            } else {
+                avatar = document.createElement('div');
+                avatar.className = 'w-7 h-7 rounded-lg bg-emerald-700 text-white text-[10px] font-extrabold flex items-center justify-center shrink-0';
+                avatar.textContent = initialsOf(currentUser.name);
+            }
+
+            const info = document.createElement('div');
+            info.className = 'leading-tight max-w-[110px] min-w-0';
+            const nameEl = document.createElement('div');
+            nameEl.className = 'text-[11px] font-bold text-slate-800 truncate flex items-center gap-1';
+            const nameText = document.createElement('span');
+            nameText.className = 'truncate';
+            nameText.textContent = currentUser.name;
+            nameEl.appendChild(nameText);
+            if (currentUser.uid && cloudState.configured) {
+                const cloudIcon = document.createElement('i');
+                cloudIcon.className = 'fa-solid fa-cloud text-[9px] text-sky-500 shrink-0';
+                cloudIcon.title = 'Sesi cloud aktif';
+                nameEl.appendChild(cloudIcon);
+            }
+            const mailEl = document.createElement('div');
+            mailEl.className = 'text-[10px] text-slate-400 truncate';
+            mailEl.textContent = currentUser.email || (currentUser.provider === 'github' ? 'GitHub account' : 'Akun lokal');
+            info.append(nameEl, mailEl);
+
+            const out = document.createElement('button');
+            out.type = 'button';
+            out.title = 'Keluar dari sesi';
+            out.setAttribute('aria-label', 'Keluar dari sesi');
+            out.className = 'w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition flex items-center justify-center shrink-0';
+            out.innerHTML = '<i class="fa-solid fa-arrow-right-from-bracket text-[11px]"></i>';
+            out.addEventListener('click', logout);
+
+            chip.append(avatar, info, out);
+            area.appendChild(chip);
+        }
+
+        function cloudActive() {
+            return !!(cloudState.ready && currentUser && currentUser.uid && window.EcoCloud && window.EcoCloud.configured);
+        }
+
+        function updateCloudIndicators() {
+            const badge = document.getElementById('cloudStatusBadge');
+            if (!badge) return;
+            const active = cloudActive();
+            badge.classList.toggle('hidden', !active);
+            badge.classList.toggle('flex', active);
+        }
+
+        function updateCloudMode(status) {
+            cloudState.configured = !!status.configured;
+            cloudState.ready = !!status.ready;
+            const note = document.getElementById('authModeNote');
+            const icon = document.getElementById('cloudModeIcon');
+            const demo = document.getElementById('demoLoginSection');
+            if (note) {
+                note.textContent = status.error
+                    ? 'Firebase gagal dimuat — aplikasi memakai mode demo lokal.'
+                    : status.configured
+                        ? 'Terhubung ke Firebase — login Google/GitHub aktif dan data tersinkron ke cloud.'
+                        : 'Firebase belum dikonfigurasi — tombol provider memakai akun demo lokal.';
+            }
+            if (icon) {
+                icon.className = status.configured
+                    ? 'fa-solid fa-cloud-arrow-up mt-0.5 text-sky-500'
+                    : 'fa-solid fa-cloud mt-0.5 text-slate-400';
+            }
+            if (demo) demo.classList.toggle('hidden', !!status.configured);
+            renderAuth();
+            updateCloudIndicators();
+        }
+
+        function applyCloudSession(profile, isRestore) {
+            if (!profile) {
+                if (currentUser && (currentUser.uid || cloudState.configured)) {
+                    const wasCloud = currentUser.uid;
+                    currentUser = null;
+                    try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+                    renderAuth();
+                    updateCloudIndicators();
+                    if (!isRestore && wasCloud) showToast('Sesi cloud berakhir. Silakan masuk kembali.', 'warning');
+                }
+                return;
+            }
+
+            const previous = currentUser;
+            currentUser = {
+                uid: profile.uid,
+                name: profile.name || 'Pengguna',
+                email: profile.email || '',
+                photo: profile.photo || '',
+                provider: profile.provider || 'firebase',
+                since: previous && previous.uid === profile.uid && previous.since ? previous.since : Date.now()
+            };
+            try { localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser)); } catch (e) {}
+            renderAuth();
+            updateCloudIndicators();
+            setAuthError('');
+            if (!isRestore) {
+                closeAuthModal();
+                playSound('success');
+                showToast(`Masuk sebagai ${currentUser.name}. Sinkronisasi cloud aktif.`, 'success');
+            }
+        }
+
+        function normalizeReport(report) {
+            const normalized = Object.assign({}, report);
+            if (!STATUS_META[normalized.status]) normalized.status = 'baru';
+            if (!normalized.author || typeof normalized.author !== 'object') {
+                normalized.author = normalized.authorName
+                    ? { name: normalized.authorName, email: normalized.authorEmail || '' }
+                    : null;
+            }
+            return normalized;
+        }
+
+        function applyCloudReports(list) {
+            if (!Array.isArray(list)) return;
+            const incoming = list.map(normalizeReport);
+            const incomingIds = new Set(incoming.map(r => String(r.id)));
+            const localOnly = hazardReports.filter(r => !r.cloudId && !incomingIds.has(String(r.id)));
+            hazardReports = [...incoming, ...localOnly];
+            saveData();
+            renderReports();
+            updateCloudIndicators();
+        }
+
+        function mergeHistory(primary, secondary) {
+            const seen = new Set();
+            const merged = [];
+            [...primary, ...secondary].forEach(entry => {
+                if (!entry || typeof entry.ts !== 'number') return;
+                const key = `${entry.ts}|${entry.kind || ''}|${entry.label || ''}`;
+                if (seen.has(key)) return;
+                seen.add(key);
+                merged.push(entry);
+            });
+            return merged.sort((a, b) => b.ts - a.ts).slice(0, 60);
+        }
+
+        function applyCloudJournal(entries) {
+            if (!Array.isArray(entries)) return;
+            const merged = mergeHistory(entries, ecoState.history);
+            const changed = merged.length !== ecoState.history.length;
+            if (changed) {
+                ecoState.history = merged;
+                saveData();
+                renderJournal();
+                updateTrendChart();
+            }
+            queueJournalSync();
+        }
+
+        function queueJournalSync() {
+            if (!cloudActive()) return;
+            clearTimeout(cloudState.journalTimer);
+            cloudState.journalTimer = setTimeout(() => {
+                if (!cloudActive()) return;
+                window.EcoCloud.syncJournal(ecoState.history).catch(() => {});
+            }, 900);
+        }
+
+        function initCloud() {
+            if (!window.EcoCloud) return;
+            window.EcoCloud.init({
+                onUser: applyCloudSession,
+                onReports: applyCloudReports,
+                onJournal: applyCloudJournal,
+                onStatus: updateCloudMode,
+                onError: () => {
+                    const badge = document.getElementById('cloudStatusBadge');
+                    if (badge && !badge.classList.contains('hidden')) {
+                        badge.title = 'Sinkronisasi cloud terputus sementara';
+                    }
+                }
+            });
+        }
+
+        function openAuthModal() {
+            const modal = document.getElementById('authModal');
+            if (!modal) return;
+            playSound('click');
+            setAuthError('');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                const nameInput = document.getElementById('loginName');
+                if (nameInput && !nameInput.closest('.hidden')) nameInput.focus();
+            }, 60);
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('authModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function setAuthError(message) {
+            const el = document.getElementById('authError');
+            if (!el) return;
+            el.textContent = message;
+            el.classList.toggle('hidden', !message);
+        }
+
+        function authErrorMessage(err) {
+            const code = err && (err.code || err.message);
+            const messages = {
+                'auth/popup-closed-by-user': 'Jendela login ditutup sebelum selesai.',
+                'auth/cancelled-popup-request': 'Permintaan login dibatalkan.',
+                'auth/popup-blocked': 'Popup diblokir browser. Izinkan popup untuk situs ini lalu coba lagi.',
+                'auth/unauthorized-domain': 'Domain ini belum diizinkan. Tambahkan di Firebase Console → Authentication → Settings → Authorized domains.',
+                'auth/operation-not-allowed': 'Provider login ini belum diaktifkan di Firebase Console.',
+                'auth/account-exists-with-different-credential': 'Email ini sudah terdaftar dengan provider lain. Gunakan provider tersebut.',
+                'auth/network-request-failed': 'Jaringan bermasalah. Periksa koneksi internet.',
+                'auth/invalid-api-key': 'Konfigurasi Firebase tidak valid (apiKey).',
+                'cloud-not-ready': 'Firebase belum siap. Muat ulang halaman lalu coba lagi.'
+            };
+            return messages[code] || 'Login gagal. Periksa konfigurasi Firebase dan coba lagi.';
+        }
+
+        function completeLogin(profile, isDemo = true) {
+            currentUser = {
+                uid: profile.uid || `demo-${profile.provider || 'email'}`,
+                name: profile.name,
+                email: profile.email,
+                photo: profile.photo || '',
+                provider: profile.provider || 'email',
+                since: Date.now()
+            };
+            try {
+                localStorage.setItem(SESSION_KEY, JSON.stringify(currentUser));
+            } catch (e) {}
+            const form = document.getElementById('emailLoginForm');
+            if (form) form.reset();
+            closeAuthModal();
+            renderAuth();
+            updateCloudIndicators();
+            playSound('success');
+            showToast(
+                isDemo
+                    ? `Masuk (mode demo) sebagai ${currentUser.name}. Isi FIREBASE_CONFIG untuk sinkron cloud.`
+                    : `Selamat datang, ${currentUser.name}!`,
+                'success'
+            );
+        }
+
+        async function startProviderLogin(providerName) {
+            setAuthError('');
+            const bridge = window.EcoCloud;
+            if (bridge && bridge.configured) {
+                if (!bridge.ready) {
+                    setAuthError('Firebase masih dimuat. Coba lagi sebentar.');
+                    return;
+                }
+                try {
+                    await bridge.signIn(providerName);
+                } catch (err) {
+                    setAuthError(authErrorMessage(err));
+                }
+                return;
+            }
+
+            const personas = {
+                google: {
+                    name: 'Sari Wulandari',
+                    email: 'sari.wulandari@gmail.com',
+                    photo: 'https://api.dicebear.com/9.x/notionists/svg?seed=Sari%20Wulandari&backgroundColor=b6e3f4'
+                },
+                github: {
+                    name: 'Rizky Pratama',
+                    email: 'rizky.pratama@users.noreply.github.com',
+                    photo: 'https://api.dicebear.com/9.x/notionists/svg?seed=Rizky%20Pratama&backgroundColor=c0aede'
+                }
+            };
+            const persona = personas[providerName] || personas.google;
+            completeLogin(Object.assign({ provider: providerName }, persona));
+        }
+
+        function loginWithGoogle() {
+            startProviderLogin('google');
+        }
+
+        function loginWithGithub() {
+            startProviderLogin('github');
+        }
+
+        function submitEmailLogin(e) {
+            e.preventDefault();
+            if (cloudState.configured) {
+                setAuthError('Gunakan tombol Google atau GitHub untuk akun cloud.');
+                return;
+            }
+            const name = document.getElementById('loginName').value.trim();
+            const email = document.getElementById('loginEmail').value.trim();
+            const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+            if (!name || !validEmail) {
+                setAuthError('Lengkapi nama dan alamat email yang valid.');
+                return;
+            }
+            completeLogin({ name, email, provider: 'email' });
+        }
+
+        function logout() {
+            const wasCloud = !!(currentUser && currentUser.uid && !String(currentUser.uid).startsWith('demo-'));
+            try { localStorage.removeItem(SESSION_KEY); } catch (e) {}
+            currentUser = null;
+            renderAuth();
+            updateCloudIndicators();
+            if (wasCloud && window.EcoCloud && window.EcoCloud.configured) {
+                window.EcoCloud.signOut().catch(() => {});
+            }
+            playSound('click');
+            showToast('Sesi diakhiri. Kamu bisa masuk lagi kapan saja.', 'info');
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeAuthModal();
+        });
+
+        /* Database Objek AI */
+        const ECO_DATABASE = {
+            plastic: {
+                name: 'Botol / Wadah Plastik (PET/PP)',
+                confidence: '94.2%',
+                decomp: '450 - 500 Tahun',
+                co2: 1.5,
+                wasteWeight: 0.8,
+                riskLevel: 75,
+                hazardText: 'Risiko Anorganik Tinggi',
+                hazardBg: 'hazard-critical',
+                guide: 'Bersihkan sisa cairan, pipihkan wadah, dan masukkan ke tempat sampah anorganik atau serahkan ke Bank Sampah terdekat untuk didaur ulang.',
+                label: 'PLASTIC BOTTLE (PET)'
+            },
+            ewaste: {
+                name: 'Limbah Elektronik / Baterai Bekas',
+                confidence: '98.1%',
+                decomp: 'Tidak Terurai (Racun B3)',
+                co2: 3.2,
+                wasteWeight: 1.2,
+                riskLevel: 95,
+                hazardText: 'Bahaya Kritis Beracun',
+                hazardBg: 'hazard-critical',
+                guide: 'BAHAYA: Mengandung raksa dan kadmium. Jangan dibakar atau dibuang ke tempat sampah biasa! Serahkan ke Drop Box E-Waste resmi.',
+                label: 'HAZARDOUS E-WASTE'
+            },
+            organic: {
+                name: 'Sampah Organik / Sisa Makanan',
+                confidence: '91.5%',
+                decomp: '2 - 4 Minggu',
+                co2: 0.8,
+                wasteWeight: 1.0,
+                riskLevel: 35,
+                hazardText: 'Dapat Kompos',
+                hazardBg: 'hazard-safe',
+                guide: 'Sangat baik untuk diolah menjadi pupuk kompos rumah tangga atau pupuk organik cair untuk mencegah timbulan gas metana di TPA.',
+                label: 'ORGANIC COMPOSTABLE'
+            },
+            paper: {
+                name: 'Kardus / Kertas Bekas Kemasan',
+                confidence: '96.0%',
+                decomp: '2 - 5 Bulan',
+                co2: 1.1,
+                wasteWeight: 0.6,
+                riskLevel: 25,
+                hazardText: 'Mudah Didaur Ulang',
+                hazardBg: 'hazard-safe',
+                guide: 'Lipat kardus hingga pipih, jaga agar tetap kering dari minyak/air, dan kelompokkan bersama daur ulang kertas.',
+                label: 'CARDBOARD / PAPER'
+            },
+            water: {
+                name: 'Genangan Air (Vektor Nyamuk DBD)',
+                confidence: '89.7%',
+                decomp: 'Ancaman Kesehatan Warga',
+                co2: 0.3,
+                wasteWeight: 0.0,
+                riskLevel: 85,
+                hazardText: 'Vektor Nyamuk DBD',
+                hazardBg: 'hazard-warn',
+                guide: 'Segera lakukan gerakan 3M: Kuras penampungan, tutup rapat tempat air, dan daur ulang barang bekas penampung air hujan.',
+                label: 'STAGNANT WATER HAZARD'
+            }
+        };
+
+        /* Audio Synth API */
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (!audioEnabled || !audioContext) return;
+            if (audioContext.state === 'suspended') audioContext.resume();
+            try {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, audioContext.currentTime);
+                    gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    osc.start(); osc.stop(audioContext.currentTime + 0.1);
+                } else if (type === 'success') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, audioContext.currentTime);
+                    osc.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                    osc.start(); osc.stop(audioContext.currentTime + 0.2);
+                }
+            } catch(e) {}
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            document.getElementById('sfxLabel').innerText = audioEnabled ? 'SFX: Aktif' : 'SFX: Muted';
+        }
+
+        /* Initial Setup */
+        window.onload = function() {
+            sizeFxCanvas();
+            loadSavedData();
+            loadSession();
+            initCloud();
+            const heroDateEl = document.getElementById('heroDate');
+            if (heroDateEl) {
+                heroDateEl.textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+            }
+            initChart();
+            updateFootprintCalc();
+            setupCanvas();
+            ensureDetector();
+            renderLoop();
+            setupReveal();
+            setupDropZone();
+            setupRipple();
+            setupQuantitySlider();
+            startTelemetry();
+            const firstTab = document.querySelector('.upcycle-tab');
+            if (firstTab) firstTab.classList.add('active');
+            updateUI();
+        };
+
+        const canvas = document.getElementById('visionCanvas');
+        const ctx = canvas.getContext('2d');
+        const video = document.getElementById('webcamVideo');
+
+        function setupCanvas() {
+            canvas.width = 1280;
+            canvas.height = 720;
+        }
+
+        /* ---------- TensorFlow.js COCO-SSD object detection ---------- */
+        const COCO_TO_ECO = {
+            bottle: 'plastic', cup: 'plastic', 'wine glass': 'plastic', vase: 'plastic', toothbrush: 'plastic',
+            book: 'paper',
+            laptop: 'ewaste', tv: 'ewaste', 'cell phone': 'ewaste', keyboard: 'ewaste', mouse: 'ewaste',
+            remote: 'ewaste', microwave: 'ewaste', toaster: 'ewaste', 'hair drier': 'ewaste', clock: 'ewaste',
+            banana: 'organic', apple: 'organic', orange: 'organic', broccoli: 'organic', carrot: 'organic',
+            sandwich: 'organic', 'hot dog': 'organic', pizza: 'organic', donut: 'organic', cake: 'organic',
+            'potted plant': 'organic'
+        };
+
+        function mapCocoLabel(label) {
+            return COCO_TO_ECO[String(label || '').toLowerCase()] || null;
+        }
+
+        function setScanStatus(label, tone) {
+            const badge = document.getElementById('scanStatusBadge');
+            if (!badge) return;
+            const colors = { ready: '#10B981', loading: '#F59E0B', error: '#E11D48', idle: '#94A3B8' };
+            const shells = {
+                ready: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                loading: 'bg-amber-50 text-amber-700 border-amber-200',
+                error: 'bg-rose-50 text-rose-700 border-rose-200',
+                idle: 'bg-slate-100 text-slate-600 border-slate-200'
+            };
+            badge.className = `${shells[tone] || shells.idle} border text-[11px] font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5`;
+            badge.innerHTML = '';
+            const dot = document.createElement('span');
+            dot.style.cssText = `width:8px;height:8px;border-radius:9999px;display:inline-block;background:${colors[tone] || colors.idle};`;
+            if (tone === 'loading') dot.classList.add('animate-pulse');
+            const text = document.createElement('span');
+            text.textContent = label;
+            badge.append(dot, text);
+        }
+
+        const SCAN_BUTTON_HTML = '<i class="fa-solid fa-expand"></i> Tangkap & Analisis AI';
+        const SCAN_BUTTON_LOADING_HTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memuat Model AI...';
+
+        function updateScanButtonState() {
+            const btn = document.getElementById('btnScan');
+            if (!btn) return;
+            if (detectorLoading) {
+                btn.disabled = true;
+                btn.innerHTML = SCAN_BUTTON_LOADING_HTML;
+                btn.setAttribute('aria-busy', 'true');
+                btn.title = 'Model AI sedang dimuat. Tombol aktif otomatis setelah selesai.';
+                return;
+            }
+            btn.disabled = false;
+            btn.innerHTML = SCAN_BUTTON_HTML;
+            btn.removeAttribute('aria-busy');
+            btn.title = detector
+                ? 'Model AI COCO-SSD siap menganalisis objek.'
+                : 'Model AI tidak tersedia — pemindaian memakai simulasi.';
+        }
+
+        function refreshScanStatus() {
+            if (detectorLoading) {
+                setScanStatus('Memuat Model AI...', 'loading');
+            } else if (webcamStream) {
+                if (detector) setScanStatus('AI Real-Time Aktif', 'ready');
+                else if (detectorError) setScanStatus('Mode Simulasi (model offline)', 'idle');
+                else setScanStatus('Kamera Aktif', 'ready');
+            } else if (detector) {
+                setScanStatus('Model AI Siap', 'ready');
+            } else if (detectorError) {
+                setScanStatus('Mode Simulasi (model offline)', 'idle');
+            } else {
+                setScanStatus('Mode Kamera Siap', 'ready');
+            }
+            updateScanButtonState();
+        }
+
+        function ensureDetector() {
+            if (detector) return Promise.resolve(detector);
+            if (detectorLoading) return detectorLoading;
+            if (typeof cocoSsd === 'undefined') {
+                detectorError = 'Pustaka COCO-SSD belum termuat';
+                refreshScanStatus();
+                return Promise.resolve(null);
+            }
+            setScanStatus('Memuat Model AI...', 'loading');
+            const loadTask = Promise.resolve().then(() => cocoSsd.load({ base: 'lite_mobilenet_v2' }));
+            loadTask.catch(() => {});
+            detectorLoading = Promise.race([
+                loadTask,
+                new Promise(resolve => setTimeout(() => resolve('__timeout__'), 20000))
+            ])
+                .then(model => {
+                    if (model === '__timeout__') {
+                        detectorError = 'Waktu muat model habis';
+                        return null;
+                    }
+                    detector = model;
+                    detectorError = null;
+                    return model;
+                })
+                .catch(err => {
+                    detectorError = (err && err.message) || 'Model gagal dimuat';
+                    return null;
+                })
+                .finally(() => {
+                    detectorLoading = null;
+                    refreshScanStatus();
+                });
+            updateScanButtonState();
+            return detectorLoading;
+        }
+
+        async function detectFromElement(el) {
+            const model = await ensureDetector();
+            if (!model || !el) return null;
+            try {
+                const predictions = await model.detect(el, 6, 0.45);
+                return Array.isArray(predictions) ? predictions : [];
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function pickBestDetection(predictions) {
+            if (!Array.isArray(predictions) || predictions.length === 0) return null;
+            const sorted = predictions.slice().sort((a, b) => b.score - a.score);
+            const mapped = sorted.filter(pred => mapCocoLabel(pred.class));
+            return mapped[0] || sorted[0];
+        }
+
+        function chooseAnalysisFromDetections(predictions) {
+            if (!Array.isArray(predictions) || predictions.length === 0) return null;
+            const mapped = predictions
+                .filter(pred => mapCocoLabel(pred.class))
+                .sort((a, b) => b.score - a.score);
+            if (mapped.length === 0) return null;
+            const best = mapped[0];
+            const count = predictions.filter(pred => pred.class === best.class).length;
+            return { key: mapCocoLabel(best.class), best, count };
+        }
+
+        function startLiveDetection() {
+            stopLiveDetection();
+            if (!detector || !webcamStream) return;
+            const chip = document.getElementById('liveDetectChip');
+            if (chip) {
+                chip.classList.remove('hidden');
+                chip.classList.add('flex');
+            }
+            const run = async () => {
+                if (!detector || !webcamStream || video.readyState < 2) return;
+                if (run.busy) return;
+                run.busy = true;
+                try {
+                    const predictions = await detector.detect(video, 4, 0.45);
+                    lastDetections = predictions || [];
+                    const best = pickBestDetection(lastDetections);
+                    const text = document.getElementById('liveDetectText');
+                    if (text) text.textContent = best ? `${best.class} · ${Math.round(best.score * 100)}%` : 'Mencari objek…';
+                } catch (e) {} finally {
+                    run.busy = false;
+                }
+            };
+            run();
+            liveDetectTimer = setInterval(run, 1300);
+        }
+
+        function stopLiveDetection() {
+            if (liveDetectTimer) {
+                clearInterval(liveDetectTimer);
+                liveDetectTimer = null;
+            }
+            const chip = document.getElementById('liveDetectChip');
+            if (chip) {
+                chip.classList.add('hidden');
+                chip.classList.remove('flex');
+            }
+            lastDetections = [];
+        }
+
+        function drawRealDetections() {
+            const sourceW = video.videoWidth || canvas.width;
+            const sourceH = video.videoHeight || canvas.height;
+            const scaleX = canvas.width / sourceW;
+            const scaleY = canvas.height / sourceH;
+
+            lastDetections.slice(0, 4).forEach(det => {
+                const [bx, by, bw, bh] = det.bbox;
+                const x = bx * scaleX;
+                const y = by * scaleY;
+                const w = bw * scaleX;
+                const h = bh * scaleY;
+                const mapped = mapCocoLabel(det.class);
+                const color = mapped ? '#10B981' : '#F59E0B';
+                const label = `${det.class} ${Math.round(det.score * 100)}%`;
+
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([]);
+                ctx.strokeRect(x, y, w, h);
+
+                ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+                const labelW = ctx.measureText(label).width + 16;
+                ctx.fillStyle = color;
+                ctx.fillRect(x, Math.max(0, y - 24), labelW, 22);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(label, x + 8, Math.max(14, y - 9));
+            });
+        }
+
+        /* Camera & Image Upload Handling */
+        async function startWebcam() {
+            playSound('click');
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } } });
+                video.srcObject = webcamStream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    document.getElementById('cameraPlaceholder').classList.add('hidden');
+                    document.getElementById('uploadedImage').classList.add('hidden');
+                    document.getElementById('btnStopCam').classList.remove('hidden');
+                    canvas.classList.remove('hidden');
+                    refreshScanStatus();
+                    showToast('Kamera aktif. Memuat model COCO-SSD…', 'success');
+                    ensureDetector().then(model => {
+                        if (model && webcamStream) {
+                            startLiveDetection();
+                            showToast('Model COCO-SSD siap — deteksi objek real-time aktif.', 'success');
+                            refreshScanStatus();
+                        } else if (webcamStream) {
+                            setScanStatus('Mode Simulasi (model offline)', 'idle');
+                            showToast('Model AI tidak dapat dimuat. Pemindaian memakai simulasi.', 'warning');
+                        }
+                    });
+                };
+            } catch (e) {
+                showToast('Akses kamera ditolak. Beralih ke mode simulasi.', 'warning');
+                enableDemoMode();
+            }
+        }
+
+        function stopWebcam() {
+            stopLiveDetection();
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            video.srcObject = null;
+            document.getElementById('btnStopCam').classList.add('hidden');
+            document.getElementById('uploadedImage').classList.add('hidden');
+            canvas.classList.remove('hidden');
+            document.getElementById('cameraPlaceholder').classList.remove('hidden');
+            refreshScanStatus();
+            showToast('Kamera dimatikan.', 'info');
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) loadImageFile(file);
+            event.target.value = '';
+        }
+
+        function loadImageFile(file) {
+            if (!file || !String(file.type).startsWith('image/')) {
+                showToast('Berkas harus berupa gambar (JPG, PNG, WebP).', 'warning');
+                return;
+            }
+            playSound('click');
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+                video.srcObject = null;
+                document.getElementById('btnStopCam').classList.add('hidden');
+            }
+            stopLiveDetection();
+            refreshScanStatus();
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.getElementById('uploadedImage');
+                img.src = e.target.result;
+                img.classList.remove('hidden');
+                document.getElementById('cameraPlaceholder').classList.add('hidden');
+                canvas.classList.add('hidden');
+                ensureDetector();
+                showToast('Gambar dimuat. Tekan “Tangkap & Analisis AI” untuk deteksi objek.', 'info');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function enableDemoMode() {
+            playSound('click');
+            stopLiveDetection();
+            document.getElementById('btnStopCam').classList.add('hidden');
+            document.getElementById('cameraPlaceholder').classList.add('hidden');
+            document.getElementById('uploadedImage').classList.add('hidden');
+            canvas.classList.remove('hidden');
+            refreshScanStatus();
+            if (!webcamStream) setScanStatus('Mode Simulasi', 'idle');
+        }
+
+        function changeTargetObject(val) {
+            activeTargetKey = val;
+            playSound('click');
+        }
+
+        /* Canvas Overlay Renderer */
+        function renderLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (webcamStream && !video.paused && !video.ended) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            } else {
+                // Background Grid for Simulation Mode
+                ctx.fillStyle = '#1E293B';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                for (let x = 0; x < canvas.width; x += 40) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+                }
+                for (let y = 0; y < canvas.height; y += 40) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+                }
+            }
+
+            // Real COCO-SSD boxes when available, otherwise simulated target box
+            drawAIBoundingBox();
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        function drawAIBoundingBox() {
+            if (webcamStream && lastDetections.length && !video.paused && video.readyState >= 2) {
+                drawRealDetections();
+                return;
+            }
+
+            const time = Date.now() * 0.002;
+            const targetKey = activeTargetKey === 'auto' ? getAutoTarget() : activeTargetKey;
+            const data = ECO_DATABASE[targetKey];
+
+            const width = 320;
+            const height = 200;
+            const x = (canvas.width / 2 - width / 2) + Math.sin(time) * 15;
+            const y = (canvas.height / 2 - height / 2) + Math.cos(time * 0.7) * 12;
+
+            // Box Frame
+            ctx.strokeStyle = '#10B981';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 6]);
+            ctx.strokeRect(x, y, width, height);
+            ctx.setLineDash([]);
+
+            // Corners
+            const cLen = 14;
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 3;
+            // TL
+            ctx.beginPath(); ctx.moveTo(x, y + cLen); ctx.lineTo(x, y); ctx.lineTo(x + cLen, y); ctx.stroke();
+            // TR
+            ctx.beginPath(); ctx.moveTo(x + width - cLen, y); ctx.lineTo(x + width, y); ctx.lineTo(x + width, y + cLen); ctx.stroke();
+            // BL
+            ctx.beginPath(); ctx.moveTo(x, y + height - cLen); ctx.lineTo(x, y + height); ctx.lineTo(x + cLen, y + height); ctx.stroke();
+            // BR
+            ctx.beginPath(); ctx.moveTo(x + width - cLen, y + height); ctx.lineTo(x + width, y + height); ctx.lineTo(x + width, y + height - cLen); ctx.stroke();
+
+            // Label Header
+            ctx.fillStyle = '#2E7D32';
+            ctx.fillRect(x, y - 26, width, 26);
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+            ctx.fillText(`[AI SCAN] ${data.label} (${data.confidence})`, x + 8, y - 9);
+        }
+
+        function getAutoTarget() {
+            const keys = ['plastic', 'ewaste', 'organic', 'paper', 'water'];
+            const idx = Math.floor(Date.now() / 3500) % keys.length;
+            return keys[idx];
+        }
+
+        /* Capture & Environmental AI Diagnosis */
+        let isScanning = false;
+        async function captureAndAnalyze() {
+            if (isScanning) return;
+            if (detectorLoading) {
+                showToast('Model AI masih dimuat. Tombol analisis aktif otomatis setelah model siap.', 'info');
+                return;
+            }
+            isScanning = true;
+            playSound('click');
+
+            const scanBtn = document.getElementById('btnScan');
+            scanBtn.disabled = true;
+
+            const flash = document.getElementById('flashOverlay');
+            flash.style.opacity = '0.7';
+            setTimeout(() => { flash.style.opacity = '0'; }, 160);
+
+            const overlay = document.getElementById('scanProgress');
+            const bar = document.getElementById('scanProgressBar');
+            const pct = document.getElementById('scanPercent');
+            const stepText = document.getElementById('scanStepText');
+            setScanStatus('Menganalisis…', 'loading');
+
+            const steps = [
+                { at: 0, label: 'Menjalankan model deteksi objek…' },
+                { at: 35, label: 'Mengekstraksi fitur visual…' },
+                { at: 65, label: 'Mencocokkan basis data lingkungan…' },
+                { at: 88, label: 'Menyusun rekomendasi penanganan…' }
+            ];
+            overlay.classList.remove('hidden');
+            bar.style.width = '0%';
+            pct.textContent = '0%';
+            stepText.textContent = steps[0].label;
+
+            const uploaded = document.getElementById('uploadedImage');
+            const usingVideo = !!(webcamStream && video.readyState >= 2 && !video.paused && !video.ended);
+            const usingImage = !!(uploaded && !uploaded.classList.contains('hidden') && uploaded.src && uploaded.complete);
+
+            let detections = null;
+            let workSettled = !(usingVideo || usingImage);
+            const detectTask = detections === null && (usingVideo || usingImage)
+                ? detectFromElement(usingVideo ? video : uploaded)
+                    .then(predictions => {
+                        detections = Array.isArray(predictions) ? predictions : null;
+                        workSettled = true;
+                    })
+                    .catch(() => { workSettled = true; })
+                : Promise.resolve();
+
+            const duration = reduceMotion ? 350 : 1400;
+            const start = performance.now();
+            await new Promise(resolve => {
+                let finished = false;
+                const timer = setInterval(() => {
+                    if (finished) return;
+                    const elapsed = performance.now() - start;
+                    const progress = Math.min(0.96, elapsed / duration);
+                    const percent = Math.round(progress * 100);
+                    bar.style.width = `${percent}%`;
+                    pct.textContent = `${percent}%`;
+                    let current = steps[0];
+                    steps.forEach(step => { if (percent >= step.at) current = step; });
+                    stepText.textContent = workSettled && percent >= 65
+                        ? 'Menyusun rekomendasi penanganan…'
+                        : current.label;
+                    if (workSettled && elapsed >= duration) {
+                        finished = true;
+                        clearInterval(timer);
+                        bar.style.width = '100%';
+                        pct.textContent = '100%';
+                        stepText.textContent = 'Menyusun rekomendasi penanganan…';
+                        resolve();
+                    }
+                }, reduceMotion ? 60 : 40);
+            });
+            await detectTask;
+
+            if (usingVideo && detections) lastDetections = detections;
+
+            const fallbackKey = activeTargetKey === 'auto' ? getAutoTarget() : activeTargetKey;
+            const choice = chooseAnalysisFromDetections(detections);
+            const key = choice ? choice.key : fallbackKey;
+            const item = ECO_DATABASE[key];
+            let meta = null;
+            if (choice) {
+                meta = {
+                    confidence: `${Math.round(choice.best.score * 100)}%`,
+                    label: `COCO-SSD: ${choice.best.class}${choice.count > 1 ? ` ×${choice.count}` : ''}`
+                };
+            }
+
+            lastAnalyzedObject = { key, item, qty: 1 };
+            document.getElementById('qtySlider').value = 1;
+            renderAnalysis(item, meta);
+
+            overlay.classList.add('hidden');
+            refreshScanStatus();
+            playSound('success');
+            isScanning = false;
+
+            if (meta) {
+                showToast(`Terdeteksi “${choice.best.class}” (${meta.confidence}) — hasil diagnosis AI diperbarui.`, 'info');
+            } else if (usingVideo || usingImage) {
+                showToast('Objek belum dikenali model. Menampilkan analisis dari basis data simulasi.', 'warning');
+            }
+        }
+
+        function getQty() {
+            const slider = document.getElementById('qtySlider');
+            return slider ? Math.max(1, parseInt(slider.value, 10) || 1) : 1;
+        }
+
+        function setCO2Display(value, animate) {
+            const box = document.getElementById('resCO2');
+            box.innerHTML = '+<span id="resCO2Num">0.0</span> kg CO₂e';
+            const num = document.getElementById('resCO2Num');
+            if (animate) animateValue(num, value, 1, 550);
+            else num.textContent = value.toFixed(1);
+        }
+
+        function renderAnalysis(item, meta) {
+            const qty = getQty();
+            document.getElementById('resTitle').textContent = item.name;
+            const confidenceEl = document.getElementById('resConfidence');
+            confidenceEl.textContent = meta
+                ? `Akurasi AI: ${meta.confidence} · ${meta.label}`
+                : `Akurasi AI: ${item.confidence}`;
+            confidenceEl.title = meta
+                ? `Deteksi nyata ${meta.label} dengan skor ${meta.confidence}`
+                : 'Nilai akurasi basis data EcoVision';
+            document.getElementById('resDecomp').textContent = item.decomp;
+            document.getElementById('resGuide').textContent = item.guide;
+            document.getElementById('resQtyLabel').textContent = qty;
+            setCO2Display(item.co2 * qty, true);
+
+            animateValue(document.getElementById('resRiskPercent'), item.riskLevel, 0, 600);
+            const bar = document.getElementById('resRiskBar');
+            bar.className = `h-full transition-all duration-700 ${item.riskLevel >= 70 ? 'risk-high' : item.riskLevel >= 40 ? 'risk-mid' : 'risk-low'}`;
+            bar.style.width = `${item.riskLevel}%`;
+
+            const badge = document.getElementById('resultHazardBadge');
+            badge.textContent = item.hazardText;
+            badge.className = `text-[11px] font-bold px-3 py-1 rounded-full ${item.hazardBg}`;
+
+            const saveBtn = document.getElementById('btnSaveAction');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fa-solid fa-plus-circle"></i> Catat Aksi Lingkungan Ini (+Poin)';
+        }
+
+        /* Save Eco Action Record */
+        function saveEcoAction() {
+            if (!lastAnalyzedObject) return;
+            const { key, item, qty = 1 } = lastAnalyzedObject;
+            const co2 = item.co2 * qty;
+            const waste = item.wasteWeight * qty;
+            const pts = 20 * qty;
+
+            ecoState.totalCO2 = Number((ecoState.totalCO2 + co2).toFixed(2));
+            ecoState.totalWaste = Number((ecoState.totalWaste + waste).toFixed(2));
+            ecoState.points += pts;
+            ecoState.counts[key] = (ecoState.counts[key] || 0) + qty;
+
+            addHistory({ kind: 'scan', label: `${qty}× ${item.name}`, co2, waste, pts });
+            bumpMission('scan');
+
+            saveData();
+            updateUI();
+            playSound('success');
+
+            const btn = document.getElementById('btnSaveAction');
+            flyText(btn, `+${pts} Pts`);
+            const pointsBox = document.getElementById('statPointsBox');
+            pointsBox.classList.add('pulse-bump');
+            setTimeout(() => pointsBox.classList.remove('pulse-bump'), 600);
+            showToast(`Aksi tercatat: ${qty}× ${item.name} — +${pts} poin & +${co2.toFixed(1)} kg CO₂e.`, 'success');
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-check"></i> Tercatat di Jurnal Hijau';
+            lastAnalyzedObject = null;
+        }
+
+        /* Submit Community Hazard Report */
+        function submitHazardReport(e) {
+            e.preventDefault();
+            const type = document.getElementById('reportType').value;
+            const loc = document.getElementById('reportLocation').value.trim();
+            const desc = document.getElementById('reportDesc').value.trim();
+            if (!loc || !desc) {
+                showToast('Lengkapi lokasi dan deskripsi laporan terlebih dahulu.', 'warning');
+                return;
+            }
+
+            const author = currentUser
+                ? { name: currentUser.name, email: currentUser.email, uid: currentUser.uid || '', photo: currentUser.photo || '' }
+                : { name: 'Tamu', email: '', uid: '', photo: '' };
+            const report = {
+                id: Date.now(),
+                type,
+                loc,
+                desc,
+                status: 'baru',
+                date: new Date().toLocaleDateString('id-ID'),
+                ts: Date.now(),
+                author
+            };
+            hazardReports.unshift(report);
+            ecoState.reportCount += 1;
+            ecoState.points += 25;
+            reportFilter = 'all';
+
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            e.target.reset();
+
+            addHistory({ kind: 'report', label: type, pts: 25 });
+            bumpMission('report');
+
+            saveData();
+            updateUI();
+            playSound('success');
+            flyText(submitBtn, '+25 Pts');
+            const pointsBox = document.getElementById('statPointsBox');
+            pointsBox.classList.add('pulse-bump');
+            setTimeout(() => pointsBox.classList.remove('pulse-bump'), 600);
+
+            if (cloudActive()) {
+                window.EcoCloud.saveReport(report)
+                    .then(cloudId => {
+                        report.cloudId = cloudId;
+                        saveData();
+                        renderReports();
+                        showToast('Laporan terkirim ke papan komunitas cloud.', 'success');
+                    })
+                    .catch(() => {
+                        report.pendingCloud = true;
+                        saveData();
+                        renderReports();
+                        showToast('Laporan tersimpan lokal. Sinkron cloud gagal — periksa koneksi atau aturan Firestore.', 'warning');
+                    });
+            } else {
+                showToast('Laporan bahaya berhasil dikirim ke papan komunitas.', 'success');
+            }
+        }
+
+        /* DIY Upcycling Project Filter */
+        const UPCYCLE_IDEAS = {
+            plastic: {
+                title: 'Pot Tanaman Hidroponik Sederhana',
+                desc: 'Potong botol plastik bekas menjadi dua bagian. Gunakan bagian atas terbalik yang diberi kain flanel sebagai penyerap air nutrisi untuk menanam sayuran hidroponik.'
+            },
+            cardboard: {
+                title: 'Kotak Pemilah Sampah Kategori Kertas',
+                desc: 'Lapisi kardus bekas dengan stiker transparan anti air, lalu buat beberapa sekat untuk memilah kertas bekas/brosur berdasarkan ukuran.'
+            },
+            ewaste: {
+                title: 'Ornamen Lampu LED & Miniatur Cyber Art',
+                desc: 'Manfaatkan sirkuit PCB bekas mati dan kabel warna-warni sebagai elemen seni daur ulang kreatif berbentuk miniatur pemandangan kota.'
+            }
+        };
+
+        function filterUpcycle(type) {
+            playSound('click');
+            document.querySelectorAll('.upcycle-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.type === type);
+            });
+            const idea = UPCYCLE_IDEAS[type];
+            if (!idea) return;
+            document.getElementById('upcTitle').textContent = idea.title;
+            document.getElementById('upcDesc').textContent = idea.desc;
+            const card = document.getElementById('upcycleOutputCard');
+            if (!reduceMotion && card.animate) {
+                card.animate(
+                    [{ opacity: 0.2, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+                    { duration: 280, easing: 'ease-out' }
+                );
+            }
+        }
+
+        /* Chart Initialization & Update */
+        function initChart() {
+            const ctxChart = document.getElementById('categoryChart').getContext('2d');
+            categoryChartInstance = new Chart(ctxChart, {
+                type: 'doughnut',
+                plugins: [doughnutCenterText],
+                data: {
+                    labels: ['Plastik', 'E-Waste', 'Organik', 'Kertas', 'Genangan Air'],
+                    datasets: [{
+                        data: [
+                            ecoState.counts.plastic,
+                            ecoState.counts.ewaste,
+                            ecoState.counts.organic,
+                            ecoState.counts.paper,
+                            ecoState.counts.water
+                        ],
+                        backgroundColor: ['#10B981', '#E11D48', '#84CC16', '#3B82F6', '#F59E0B'],
+                        borderWidth: 2,
+                        borderColor: '#FFFFFF'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    onClick: (evt, elements) => {
+                        if (!elements.length) return;
+                        const i = elements[0].index;
+                        const labels = categoryChartInstance.data.labels;
+                        const values = categoryChartInstance.data.datasets[0].data;
+                        const total = values.reduce((a, b) => a + b, 0) || 1;
+                        const share = Math.round((values[i] / total) * 100);
+                        showToast(`${labels[i]}: ${values[i]} pemindaian tercatat (${share}% dari total).`, 'info');
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { family: 'Plus Jakarta Sans', size: 11 }, boxWidth: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => ` ${context.label}: ${context.parsed} pemindaian`
+                            }
+                        }
+                    }
+                }
+            });
+            updateChart();
+        }
+
+        const doughnutCenterText = {
+            id: 'doughnutCenterText',
+            afterDraw(chart) {
+                if (chart.config.type !== 'doughnut') return;
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+                const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                const x = (chartArea.left + chartArea.right) / 2;
+                const y = (chartArea.top + chartArea.bottom) / 2;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#0F172A';
+                ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText(String(total), x, y - 6);
+                ctx.fillStyle = '#94A3B8';
+                ctx.font = '600 9px "Plus Jakarta Sans", sans-serif';
+                ctx.fillText('TOTAL SCAN', x, y + 14);
+                ctx.restore();
+            }
+        };
+
+        function updateChart() {
+            const data = [
+                ecoState.counts.plastic || 0,
+                ecoState.counts.ewaste || 0,
+                ecoState.counts.organic || 0,
+                ecoState.counts.paper || 0,
+                ecoState.counts.water || 0
+            ];
+            const total = data.reduce((a, b) => a + b, 0);
+
+            setText('totalScans', total);
+            setText('totalSaved', `${(Number(ecoState.totalCO2) || 0).toFixed(1)} kg`);
+
+            const emptyEl = document.getElementById('chartEmpty');
+            if (emptyEl) emptyEl.classList.toggle('hidden', total > 0);
+
+            if (!categoryChartInstance) return;
+            categoryChartInstance.data.datasets[0].data = data;
+            categoryChartInstance.update();
+        }
+
+        /* ---------- 7-day trend chart & stats tabs ---------- */
+        function initTrendChart() {
+            const el = document.getElementById('trendChart');
+            if (!el) return;
+            trendChartInstance = new Chart(el.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'CO₂e diselamatkan',
+                        data: [],
+                        backgroundColor: '#34D399',
+                        hoverBackgroundColor: '#10B981',
+                        borderRadius: 6,
+                        maxBarThickness: 26
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => ` ${Number(context.parsed.y).toFixed(1)} kg CO₂e`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { font: { family: 'Plus Jakarta Sans', size: 10 }, color: '#94A3B8' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#F1F5F9' },
+                            border: { display: false },
+                            ticks: {
+                                font: { family: 'Plus Jakarta Sans', size: 10 },
+                                color: '#94A3B8',
+                                maxTicksLimit: 5,
+                                callback: (value) => `${value} kg`
+                            }
+                        }
+                    }
+                }
+            });
+            updateTrendChart();
+        }
+
+        function updateTrendChart() {
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const day = new Date();
+                day.setDate(day.getDate() - i);
+                days.push(day);
+            }
+            const labels = days.map(day => day.toLocaleDateString('id-ID', { weekday: 'short' }));
+            const history = Array.isArray(ecoState.history) ? ecoState.history : [];
+            const data = days.map(day => {
+                const key = localDateKey(day);
+                const total = history
+                    .filter(entry => localDateKey(new Date(entry.ts)) === key)
+                    .reduce((sum, entry) => sum + (Number(entry.co2) || 0), 0);
+                return Number(total.toFixed(1));
+            });
+
+            if (trendChartInstance) {
+                trendChartInstance.data.labels = labels;
+                trendChartInstance.data.datasets[0].data = data;
+                trendChartInstance.update();
+            }
+
+            const total = data.reduce((a, b) => a + b, 0);
+            const trendEmpty = document.getElementById('trendEmpty');
+            if (trendEmpty) trendEmpty.classList.toggle('hidden', total > 0);
+        }
+
+        function switchStatsTab(tab) {
+            document.querySelectorAll('.stat-tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tab);
+            });
+            const composition = document.getElementById('statsComposition');
+            const trend = document.getElementById('statsTrend');
+            if (composition) composition.classList.toggle('hidden', tab !== 'composition');
+            if (trend) trend.classList.toggle('hidden', tab !== 'trend');
+
+            if (tab === 'trend') {
+                if (!trendChartInstance) initTrendChart();
+                else updateTrendChart();
+            }
+        }
+
+        /* ---------- Daily missions, eco score & activity journal ---------- */
+        function ensureMissionDate() {
+            const today = localDateKey();
+            if (!ecoState.missions || ecoState.missions.date !== today) {
+                ecoState.missions = { date: today, scan: 0, report: 0, carbon: 0, bonus: false };
+            }
+        }
+
+        function renderMissions() {
+            const previousDate = ecoState.missions && ecoState.missions.date;
+            ensureMissionDate();
+            if (previousDate !== undefined && ecoState.missions.date !== previousDate) saveData();
+
+            const list = document.getElementById('missionList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            MISSIONS.forEach(mission => {
+                const done = (ecoState.missions[mission.key] || 0) >= mission.target;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `mission-chip ${done ? 'done' : ''}`;
+                btn.title = done ? 'Misi selesai' : 'Belum selesai — klik untuk menuju bagian terkait';
+
+                const icon = document.createElement('i');
+                icon.className = `fa-solid ${mission.icon} text-[11px]`;
+                const label = document.createElement('span');
+                label.textContent = mission.title;
+                const state = document.createElement('i');
+                state.className = `fa-solid ${done ? 'fa-circle-check' : 'fa-circle'} mission-state text-[11px]`;
+
+                btn.append(icon, label, state);
+                btn.addEventListener('click', () => jumpTo(mission.anchor));
+                list.appendChild(btn);
+            });
+
+            const completed = MISSIONS.filter(m => (ecoState.missions[m.key] || 0) >= m.target).length;
+            const bar = document.getElementById('missionBar');
+            const text = document.getElementById('missionProgressText');
+            if (bar) bar.style.width = `${(completed / MISSIONS.length) * 100}%`;
+            if (text) text.textContent = `${completed}/${MISSIONS.length} misi selesai`;
+        }
+
+        function bumpMission(key) {
+            ensureMissionDate();
+            ecoState.missions[key] = (ecoState.missions[key] || 0) + 1;
+
+            if (!ecoState.missions.bonus && MISSIONS.every(m => (ecoState.missions[m.key] || 0) >= m.target)) {
+                ecoState.missions.bonus = true;
+                ecoState.points += 15;
+                showToast('Semua misi harian selesai! Bonus +15 poin.', 'success');
+                burstConfetti(70);
+            }
+        }
+
+        function updateEcoScore() {
+            const completed = MISSIONS.filter(m => (ecoState.missions[m.key] || 0) >= m.target).length;
+            const carbon = Math.min(40, (Number(ecoState.totalCO2) / 10) * 40);
+            const waste = Math.min(20, (Number(ecoState.totalWaste) / 5) * 20);
+            const community = Math.min(20, (ecoState.reportCount / 3) * 20);
+            const missionScore = Math.min(20, (completed / MISSIONS.length) * 20);
+            const score = Math.round(carbon + waste + community + missionScore);
+
+            animateValue(document.getElementById('ecoScoreValue'), score, 0, 700);
+
+            const ring = document.getElementById('ecoScoreRing');
+            if (ring) {
+                const circumference = 2 * Math.PI * 52;
+                ring.style.strokeDashoffset = String(circumference * (1 - score / 100));
+            }
+
+            const ranks = [[90, 'Planet Guardian'], [70, 'Penjaga Hijau'], [45, 'Sahabat Bumi'], [20, 'Bertumbuh'], [0, 'Pemula']];
+            setText('ecoRank', ranks.find(item => score >= item[0])[1]);
+            setText('ecoHint', score >= 100
+                ? 'Sempurna! Pertahankan kebiasaan hijau setiap hari.'
+                : 'Selesaikan misi harian dan catat aksi untuk menaikkan skor.');
+        }
+
+        function addHistory(entry) {
+            if (!Array.isArray(ecoState.history)) ecoState.history = [];
+            ecoState.history.unshift(Object.assign({ ts: Date.now(), co2: 0, waste: 0, pts: 0 }, entry));
+            if (ecoState.history.length > 60) ecoState.history.length = 60;
+            queueJournalSync();
+        }
+
+        function renderJournal() {
+            const list = document.getElementById('journalList');
+            if (!list) return;
+            const history = Array.isArray(ecoState.history) ? ecoState.history : [];
+            setText('journalCount', `${history.length} aktivitas`);
+            list.innerHTML = '';
+
+            if (history.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'text-xs text-slate-400 text-center py-6';
+                empty.textContent = 'Belum ada aktivitas tercatat. Mulai dari scan objek pertamamu.';
+                list.appendChild(empty);
+                return;
+            }
+
+            const icons = { scan: 'fa-camera', report: 'fa-bullhorn', carbon: 'fa-calculator' };
+            history.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'flex gap-3 items-start';
+
+                const chip = document.createElement('div');
+                chip.className = `w-8 h-8 shrink-0 rounded-lg flex items-center justify-center text-xs j-${entry.kind || 'scan'}`;
+                const icon = document.createElement('i');
+                icon.className = `fa-solid ${icons[entry.kind] || 'fa-leaf'}`;
+                chip.appendChild(icon);
+
+                const body = document.createElement('div');
+                body.className = 'flex-1 min-w-0 border-b border-slate-100 pb-2.5';
+
+                const top = document.createElement('div');
+                top.className = 'flex justify-between gap-2 text-xs font-bold text-slate-800';
+                const label = document.createElement('span');
+                label.className = 'truncate';
+                label.textContent = entry.label || 'Aktivitas lingkungan';
+                const when = document.createElement('span');
+                when.className = 'text-[10px] text-slate-400 font-medium shrink-0';
+                when.textContent = timeAgo(entry.ts);
+                top.append(label, when);
+
+                const meta = document.createElement('div');
+                meta.className = 'flex flex-wrap gap-1.5 mt-1 text-[10px] font-semibold';
+                if (entry.pts) meta.appendChild(journalTag(`+${entry.pts} poin`, 'text-amber-800 bg-amber-100'));
+                if (entry.co2) meta.appendChild(journalTag(`+${Number(entry.co2).toFixed(1)} kg CO₂e`, 'text-emerald-800 bg-emerald-50'));
+                if (entry.waste) meta.appendChild(journalTag(`+${Number(entry.waste).toFixed(1)} kg sampah`, 'text-teal-700 bg-teal-100'));
+
+                body.append(top, meta);
+                row.append(chip, body);
+                list.appendChild(row);
+            });
+        }
+
+        function journalTag(text, classes) {
+            const tag = document.createElement('span');
+            tag.className = `px-1.5 py-0.5 rounded ${classes}`;
+            tag.textContent = text;
+            return tag;
+        }
+
+        /* ---------- Carbon footprint calculator ---------- */
+        const CARBON = { electricity: 0.85, car: 0.21, waste: 0.45, target: 7.5 };
+
+        function updateFootprintCalc() {
+            const kwh = Number(document.getElementById('calcKwh').value);
+            const km = Number(document.getElementById('calcKm').value);
+            const wasteKg = Number(document.getElementById('calcWaste').value);
+
+            const electricity = (kwh / 30) * CARBON.electricity;
+            const car = km * CARBON.car;
+            const waste = wasteKg * CARBON.waste;
+            const total = electricity + car + waste;
+
+            setText('calcKwhVal', kwh);
+            setText('calcKmVal', km);
+            setText('calcWasteVal', wasteKg);
+            setText('calcTotal', total.toFixed(1));
+
+            const bar = document.getElementById('calcBar');
+            if (bar) {
+                bar.style.width = `${Math.min(100, (total / (CARBON.target * 1.6)) * 100)}%`;
+                bar.className = `h-full transition-all duration-500 ${total <= CARBON.target ? 'calc-ok' : total <= CARBON.target * 1.3 ? 'calc-warn' : 'calc-bad'}`;
+            }
+
+            const verdict = document.getElementById('calcVerdict');
+            if (verdict) {
+                if (total <= CARBON.target) {
+                    verdict.textContent = 'Di bawah target';
+                    verdict.className = 'status-chip status-done';
+                } else if (total <= CARBON.target * 1.3) {
+                    verdict.textContent = 'Sedikit di atas target';
+                    verdict.className = 'status-chip status-progress';
+                } else {
+                    verdict.textContent = 'Jauh di atas target';
+                    verdict.className = 'status-chip status-bad';
+                }
+            }
+
+            const parts = [
+                { name: 'listrik', value: electricity, tip: 'Matikan perangkat standby dan ganti lampu ke LED untuk menekan emisi listrik.' },
+                { name: 'transportasi', value: car, tip: 'Coba transportasi umum, bersepeda, atau jalan kaki untuk perjalanan dekat.' },
+                { name: 'sampah', value: waste, tip: 'Pilah sampah organik menjadi kompos agar emisi metana di TPA berkurang.' }
+            ].sort((a, b) => b.value - a.value);
+
+            setText('calcTip', `Kontribusi terbesar: ${parts[0].name} (${parts[0].value.toFixed(1)} kg CO₂e). ${parts[0].tip}`);
+            return total;
+        }
+
+        function saveFootprint() {
+            const total = updateFootprintCalc();
+            const value = Number(total.toFixed(1));
+            const today = localDateKey();
+            const existing = ecoState.footprint;
+            const firstToday = !existing || existing.date !== today;
+            const previous = existing ? (existing.date === today ? existing.prev : existing.value) : null;
+
+            ecoState.footprint = { date: today, value, prev: previous };
+
+            if (firstToday) {
+                ecoState.points += 10;
+                bumpMission('carbon');
+                addHistory({ kind: 'carbon', label: 'Mencatat jejak karbon harian', pts: 10 });
+                showToast(`Jejak karbon tersimpan: ${value.toFixed(1)} kg CO₂e/hari (+10 poin).`, 'success');
+                flyText(document.getElementById('btnSaveCarbon'), '+10 Pts');
+            } else {
+                showToast('Jejak karbon hari ini diperbarui.', 'info');
+            }
+
+            saveData();
+            updateUI();
+        }
+
+        function renderFootprintSaved() {
+            const el = document.getElementById('footprintSaved');
+            if (!el) return;
+            const footprint = ecoState.footprint;
+            if (!footprint) {
+                el.textContent = 'Belum ada jejak tersimpan hari ini.';
+                return;
+            }
+            const isToday = footprint.date === localDateKey();
+            let text = `Tersimpan ${isToday ? 'hari ini' : footprint.date}: ${Number(footprint.value).toFixed(1)} kg CO₂e/hari`;
+            if (footprint.prev != null) {
+                const diff = Number(footprint.value) - Number(footprint.prev);
+                text += ` (${diff <= 0 ? '−' : '+'}${Math.abs(diff).toFixed(1)} kg vs sebelumnya)`;
+            }
+            el.textContent = text;
+        }
+
+        /* ---------- Report status & filters ---------- */
+        function setReportFilter(filter) {
+            reportFilter = filter;
+            renderReports();
+        }
+
+        function cycleReportStatus(id) {
+            const report = hazardReports.find(r => r.id === id);
+            if (!report) return;
+            const order = ['baru', 'proses', 'selesai'];
+            report.status = order[(order.indexOf(report.status || 'baru') + 1) % order.length];
+            saveData();
+            renderReports();
+            if (report.cloudId && cloudActive()) {
+                window.EcoCloud.updateReport(report.cloudId, { status: report.status }).catch(() => {
+                    showToast('Status berubah lokal; sinkron cloud gagal.', 'warning');
+                });
+            }
+            showToast(`Status laporan diubah ke “${STATUS_META[report.status].label}”.`, 'info');
+        }
+
+        /* UI Sync & LocalStorage */
+        function updateUI() {
+            animateValue(document.getElementById('headerCO2'), ecoState.totalCO2, 1, 550);
+            animateValue(document.getElementById('headerWaste'), ecoState.totalWaste, 1, 550);
+            animateValue(document.getElementById('headerPoints'), ecoState.points, 0, 550);
+            renderMissions();
+            renderReports();
+            updateBadges(true);
+            updateChart();
+            updateTrendChart();
+            renderJournal();
+            updateEcoScore();
+            renderFootprintSaved();
+        }
+
+        function renderReports() {
+            const listEl = document.getElementById('reportsList');
+            if (!listEl) return;
+
+            const counts = { all: hazardReports.length, baru: 0, proses: 0, selesai: 0 };
+            hazardReports.forEach(r => {
+                if (!STATUS_META[r.status]) r.status = 'baru';
+                counts[r.status] += 1;
+            });
+
+            setText('cntAll', counts.all);
+            setText('cntNew', counts.baru);
+            setText('cntProgress', counts.proses);
+            setText('cntDone', counts.selesai);
+            document.querySelectorAll('.report-filter').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === reportFilter);
+            });
+
+            const visible = reportFilter === 'all'
+                ? hazardReports
+                : hazardReports.filter(r => r.status === reportFilter);
+
+            listEl.innerHTML = '';
+
+            if (visible.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'text-xs text-slate-400 text-center py-6';
+                empty.textContent = hazardReports.length === 0
+                    ? 'Belum ada laporan bahaya lingkungan tersimpan.'
+                    : 'Tidak ada laporan dengan status ini.';
+                listEl.appendChild(empty);
+                return;
+            }
+
+            visible.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1 transition hover:border-emerald-300 hover:bg-emerald-50/40';
+
+                const head = document.createElement('div');
+                head.className = 'flex justify-between items-start gap-2 font-bold text-slate-800';
+
+                const title = document.createElement('span');
+                title.textContent = r.type;
+
+                const meta = document.createElement('div');
+                meta.className = 'flex items-center gap-1.5 shrink-0';
+
+                const statusInfo = STATUS_META[r.status || 'baru'];
+                const status = document.createElement('button');
+                status.type = 'button';
+                status.className = `status-chip mini-status ${statusInfo.cls}`;
+                status.textContent = statusInfo.label;
+                status.title = 'Klik untuk mengubah status';
+                status.addEventListener('click', () => cycleReportStatus(r.id));
+
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'text-slate-300 hover:text-rose-600 transition';
+                del.title = 'Hapus laporan';
+                del.setAttribute('aria-label', 'Hapus laporan');
+                del.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                del.addEventListener('click', () => removeReport(r.id));
+
+                meta.append(status, del);
+                head.append(title, meta);
+
+                const loc = document.createElement('div');
+                loc.className = 'text-[11px] text-emerald-800 font-semibold';
+                loc.textContent = `📍 ${r.loc}`;
+
+                const desc = document.createElement('p');
+                desc.className = 'text-[11px] text-slate-600 leading-snug';
+                desc.textContent = r.desc;
+
+                const authorRow = document.createElement('div');
+                authorRow.className = 'flex items-center gap-1 text-[10px] font-semibold text-slate-500';
+                const authorIcon = document.createElement('i');
+                authorIcon.className = 'fa-solid fa-user-pen text-[9px] text-slate-400';
+                const authorLabel = document.createElement('span');
+                authorLabel.className = 'truncate';
+                authorLabel.textContent = (r.author && r.author.name) ? r.author.name : 'Warga';
+                authorRow.append(authorIcon, authorLabel);
+                if (r.cloudId) {
+                    const cloudIcon = document.createElement('i');
+                    cloudIcon.className = 'fa-solid fa-cloud text-[9px] text-sky-500 ml-auto';
+                    cloudIcon.title = 'Tersinkron ke cloud';
+                    authorRow.appendChild(cloudIcon);
+                }
+
+                const footer = document.createElement('div');
+                footer.className = 'text-[10px] text-slate-400 font-medium pt-0.5';
+                footer.textContent = r.date + (r.pendingCloud ? ' • menunggu sinkron' : '');
+
+                card.append(head, loc, desc, authorRow, footer);
+                listEl.appendChild(card);
+            });
+        }
+
+        function removeReport(id) {
+            const target = hazardReports.find(r => r.id === id);
+            hazardReports = hazardReports.filter(r => r.id !== id);
+            saveData();
+            renderReports();
+            if (target && target.cloudId && cloudActive()) {
+                window.EcoCloud.deleteReport(target.cloudId).catch(() => {
+                    showToast('Laporan dihapus lokal, tetapi cloud belum terhapus.', 'warning');
+                });
+            }
+            showToast('Laporan dihapus dari daftar komunitas.', 'warning');
+        }
+
+        const BADGE_DEFS = [
+            { key: 'starter', id: 'badgeCard1', name: 'Eco Starter', test: () => ecoState.totalCO2 > 0 },
+            { key: 'recycle', id: 'badgeCard2', name: 'Recycle Master', test: () => ecoState.totalWaste >= 2 },
+            { key: 'carbon', id: 'badgeCard3', name: 'Carbon Guard', test: () => ecoState.totalCO2 >= 3 },
+            { key: 'reporter', id: 'badgeCard4', name: 'Pelapor Warga', test: () => ecoState.reportCount >= 1 }
+        ];
+
+        function updateBadges(animate) {
+            if (!Array.isArray(ecoState.unlocked)) {
+                ecoState.unlocked = BADGE_DEFS.filter(def => def.test()).map(def => def.key);
+                animate = false;
+            }
+
+            let unlockedCount = 0;
+            let changed = false;
+
+            BADGE_DEFS.forEach(def => {
+                const el = document.getElementById(def.id);
+                const isUnlocked = def.test();
+                el.classList.toggle('opacity-40', !isUnlocked);
+                if (!isUnlocked) return;
+
+                unlockedCount++;
+                if (!ecoState.unlocked.includes(def.key)) {
+                    ecoState.unlocked.push(def.key);
+                    changed = true;
+                    if (animate) {
+                        el.classList.add('badge-unlock');
+                        setTimeout(() => el.classList.remove('badge-unlock'), 950);
+                        showToast(`Lencana hijau terbuka: ${def.name}!`, 'success');
+                        burstConfetti(80);
+                    }
+                }
+            });
+
+            document.getElementById('badgeCounterText').textContent = `${unlockedCount} / 4 Terbuka`;
+            if (changed) saveData();
+        }
+
+        function saveData() {
+            localStorage.setItem('ecovision_clean_state', JSON.stringify(ecoState));
+            localStorage.setItem('ecovision_clean_reports', JSON.stringify(hazardReports));
+        }
+
+        function loadSavedData() {
+            const st = localStorage.getItem('ecovision_clean_state');
+            const rep = localStorage.getItem('ecovision_clean_reports');
+            const base = createInitialState();
+
+            if (st) {
+                try {
+                    const parsed = JSON.parse(st) || {};
+                    ecoState = Object.assign(base, parsed);
+                } catch (e) {
+                    ecoState = base;
+                }
+                ecoState.counts = Object.assign(
+                    { plastic: 0, ewaste: 0, organic: 0, paper: 0, water: 0 },
+                    ecoState.counts || {}
+                );
+                ecoState.missions = Object.assign(
+                    { date: '', scan: 0, report: 0, carbon: 0, bonus: false },
+                    ecoState.missions || {}
+                );
+                if (!Array.isArray(ecoState.history)) ecoState.history = [];
+                if (!Array.isArray(ecoState.unlocked)) ecoState.unlocked = null;
+            }
+
+            if (rep) {
+                try {
+                    const parsed = JSON.parse(rep);
+                    if (Array.isArray(parsed)) {
+                        hazardReports = parsed;
+                        hazardReports.forEach(r => {
+                            if (!STATUS_META[r.status]) r.status = 'baru';
+                        });
+                    }
+                } catch (e) {}
+            }
+
+            updateUI();
+        }
+
+        function resetAllData() {
+            if (!confirm('Hapus semua data demo (poin, lencana, laporan, jurnal) dan mulai dari awal?')) return;
+
+            localStorage.removeItem('ecovision_clean_state');
+            localStorage.removeItem('ecovision_clean_reports');
+
+            ecoState = createInitialState();
+            hazardReports = [];
+            lastAnalyzedObject = null;
+            reportFilter = 'all';
+
+            document.getElementById('resTitle').textContent = 'Silakan Ambil Foto / Scan';
+            document.getElementById('resConfidence').textContent = 'Akurasi AI: -';
+            document.getElementById('resDecomp').textContent = '-';
+            document.getElementById('resCO2').textContent = '-';
+            document.getElementById('resGuide').textContent = 'Lakukan pemindaian objek menggunakan tombol di atas untuk mendapatkan petunjuk penanganan, pengolahan daur ulang, dan estimasi nilai emisi karbon.';
+            document.getElementById('resRiskPercent').textContent = '0';
+            document.getElementById('resQtyLabel').textContent = '1';
+            document.getElementById('qtySlider').value = 1;
+
+            const bar = document.getElementById('resRiskBar');
+            bar.style.width = '0%';
+            bar.className = 'risk-low h-full w-0 transition-all duration-500';
+
+            const badge = document.getElementById('resultHazardBadge');
+            badge.textContent = 'Belum Ada Pemindaian';
+            badge.className = 'bg-slate-100 text-slate-600 text-[11px] font-bold px-3 py-1 rounded-full';
+
+            const saveBtn = document.getElementById('btnSaveAction');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-plus-circle"></i> Catat Aksi Lingkungan Ini (+Poin)';
+
+            document.getElementById('calcKwh').value = 120;
+            document.getElementById('calcKm').value = 10;
+            document.getElementById('calcWaste').value = 0.5;
+            updateFootprintCalc();
+            switchStatsTab('composition');
+
+            saveData();
+            updateUI();
+            showToast('Data demo berhasil direset.', 'success');
+        }
+
+        function exportCSV() {
+            if (hazardReports.length === 0) {
+                showToast('Tidak ada laporan untuk diekspor.', 'warning');
+                return;
+            }
+
+            const esc = (value) => `"${String(value).replace(/"/g, '""')}"`;
+            const rows = ['ID,Tanggal,Jenis Masalah,Lokasi,Deskripsi,Status,Pengirim,Email Pengirim,Sumber'];
+            hazardReports.forEach(r => {
+                const author = r.author || {};
+                rows.push([
+                    r.id,
+                    r.date,
+                    r.type,
+                    r.loc,
+                    r.desc,
+                    STATUS_META[r.status || 'baru'].label,
+                    author.name || 'Warga',
+                    author.email || '',
+                    r.cloudId ? 'Cloud' : 'Lokal'
+                ].map(esc).join(','));
+            });
+
+            const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Laporan_Bahaya_Lingkungan_EcoVision.csv';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(link.href);
+
+            showToast('Berkas CSV laporan berhasil diunduh.', 'success');
+        }
+
+        /* ---------------- Setup: reveal, dropzone, ripple, slider, telemetry ---------------- */
+        function setupReveal() {
+            const cards = document.querySelectorAll('main .clean-card');
+            cards.forEach((el, i) => {
+                el.classList.add('reveal');
+                el.style.transitionDelay = `${Math.min(i * 60, 300)}ms`;
+            });
+
+            if (reduceMotion || !('IntersectionObserver' in window)) {
+                cards.forEach(el => el.classList.add('is-visible'));
+                return;
+            }
+
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('is-visible');
+                    observer.unobserve(entry.target);
+                    setTimeout(() => { entry.target.style.transitionDelay = '0ms'; }, 900);
+                });
+            }, { threshold: 0.08 });
+
+            cards.forEach(el => observer.observe(el));
+        }
+
+        function setupDropZone() {
+            const viewport = document.getElementById('viewport');
+            const hint = document.getElementById('dropHint');
+            if (!viewport) return;
+
+            const showHint = () => {
+                hint.classList.remove('hidden');
+                hint.classList.add('flex');
+            };
+            const hideHint = () => {
+                hint.classList.add('hidden');
+                hint.classList.remove('flex');
+            };
+
+            ['dragenter', 'dragover'].forEach(evt => {
+                viewport.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showHint();
+                });
+            });
+
+            viewport.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                if (!viewport.contains(e.relatedTarget)) hideHint();
+            });
+
+            viewport.addEventListener('drop', (e) => {
+                e.preventDefault();
+                hideHint();
+                const file = e.dataTransfer.files && e.dataTransfer.files[0];
+                if (file) loadImageFile(file);
+            });
+
+            window.addEventListener('paste', (e) => {
+                const items = e.clipboardData && e.clipboardData.items;
+                if (!items) return;
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        loadImageFile(item.getAsFile());
+                        break;
+                    }
+                }
+            });
+        }
+
+        function setupRipple() {
+            document.addEventListener('pointerdown', (e) => {
+                const btn = e.target.closest('button, .upcycle-tab');
+                if (!btn || reduceMotion || btn.disabled) return;
+                const rect = btn.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                ripple.style.width = `${size}px`;
+                ripple.style.height = `${size}px`;
+                ripple.style.left = `${e.clientX - rect.left - size / 2}px`;
+                ripple.style.top = `${e.clientY - rect.top - size / 2}px`;
+                if (getComputedStyle(btn).position === 'static') btn.style.position = 'relative';
+                btn.style.overflow = 'hidden';
+                btn.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 650);
+            });
+        }
+
+        function setupQuantitySlider() {
+            const slider = document.getElementById('qtySlider');
+            if (!slider) return;
+            slider.addEventListener('input', () => {
+                const qty = getQty();
+                document.getElementById('resQtyLabel').textContent = qty;
+                if (!lastAnalyzedObject) return;
+                lastAnalyzedObject.qty = qty;
+                setCO2Display(lastAnalyzedObject.item.co2 * qty, false);
+            });
+        }
+
+        const liveSensors = { co2: 418, pm25: 12, temp: 29, hum: 68 };
+
+        function startTelemetry() {
+            const drift = (value, min, max, step) => Math.min(max, Math.max(min, value + (Math.random() - 0.5) * step));
+
+            const update = () => {
+                liveSensors.co2 = drift(liveSensors.co2, 405, 432, 2.4);
+                liveSensors.pm25 = drift(liveSensors.pm25, 6, 24, 1.6);
+                liveSensors.temp = drift(liveSensors.temp, 27, 31.5, 0.4);
+                liveSensors.hum = drift(liveSensors.hum, 58, 78, 1.5);
+
+                setText('liveCO2', Math.round(liveSensors.co2));
+                setText('livePM25', liveSensors.pm25.toFixed(1));
+                setText('liveTemp', liveSensors.temp.toFixed(1));
+                setText('liveHum', Math.round(liveSensors.hum));
+
+                const aqi = document.getElementById('liveAQI');
+                if (aqi) {
+                    const good = liveSensors.pm25 < 14;
+                    aqi.textContent = good ? 'Baik' : 'Sedang';
+                    aqi.className = `aqi-badge ${good ? 'aqi-good' : 'aqi-mid'}`;
+                }
+            };
+
+            const clock = () => {
+                setText('liveClock', new Date().toLocaleTimeString('id-ID', { hour12: false }));
+            };
+
+            update();
+            clock();
+            setInterval(update, 2400);
+            setInterval(clock, 1000);
+        }
+
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
+    </script>
+
+    <!-- FIREBASE AUTH + FIRESTORE BRIDGE (modular SDK, dimuat dinamis) -->
+    <script type="module">
+        const config = window.FIREBASE_CONFIG || {};
+        const hasConfig = !!(config.apiKey && config.authDomain && config.projectId && config.appId);
+
+        let appMod = null;
+        let authMod = null;
+        let fsMod = null;
+        let auth = null;
+        let db = null;
+        let handlers = {};
+        let unsubReports = null;
+        let unsubJournal = null;
+
+        const bridge = {
+            configured: hasConfig,
+            ready: false,
+
+            async init(nextHandlers) {
+                handlers = nextHandlers || {};
+                if (!hasConfig) {
+                    this.notifyStatus({ configured: false, ready: false });
+                    return;
+                }
+                try {
+                    [appMod, authMod, fsMod] = await Promise.all([
+                        import('https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js'),
+                        import('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js'),
+                        import('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js')
+                    ]);
+                    const app = appMod.initializeApp(config);
+                    auth = authMod.getAuth(app);
+                    db = fsMod.getFirestore(app);
+                    this.ready = true;
+                    this.notifyStatus({ configured: true, ready: true });
+
+                    let firstCallback = true;
+                    authMod.onAuthStateChanged(auth, (user) => {
+                        const isRestore = firstCallback;
+                        firstCallback = false;
+                        if (!user) {
+                            this.detach();
+                            handlers.onUser && handlers.onUser(null, isRestore);
+                            return;
+                        }
+                        handlers.onUser && handlers.onUser(mapUser(user), isRestore);
+                        this.subscribeReports();
+                        this.subscribeJournal(user.uid);
+                    });
+                } catch (err) {
+                    this.ready = false;
+                    this.configured = false;
+                    this.notifyStatus({ configured: false, ready: false, error: err && err.message });
+                }
+            },
+
+            notifyStatus(status) {
+                handlers.onStatus && handlers.onStatus(status);
+            },
+
+            async signIn(providerName) {
+                if (!this.ready || !authMod) throw { code: 'cloud-not-ready' };
+                const provider = providerName === 'github'
+                    ? new authMod.GithubAuthProvider()
+                    : new authMod.GoogleAuthProvider();
+                if (providerName !== 'github') provider.setCustomParameters({ prompt: 'select_account' });
+                await authMod.signInWithPopup(auth, provider);
+            },
+
+            async signOut() {
+                if (!this.ready || !authMod) return;
+                await authMod.signOut(auth);
+            },
+
+            detach() {
+                if (unsubReports) { unsubReports(); unsubReports = null; }
+                if (unsubJournal) { unsubJournal(); unsubJournal = null; }
+            },
+
+            subscribeReports() {
+                if (!fsMod || !db) return;
+                if (unsubReports) unsubReports();
+                try {
+                    const q = fsMod.query(
+                        fsMod.collection(db, 'reports'),
+                        fsMod.orderBy('ts', 'desc'),
+                        fsMod.limit(50)
+                    );
+                    unsubReports = fsMod.onSnapshot(q, (snapshot) => {
+                        const list = snapshot.docs.map(doc => {
+                            const data = doc.data() || {};
+                            return Object.assign({}, data, {
+                                id: data.id || doc.id,
+                                cloudId: doc.id,
+                                author: data.authorName ? {
+                                    name: data.authorName,
+                                    email: data.authorEmail || '',
+                                    uid: data.authorUid || '',
+                                    photo: data.authorPhoto || ''
+                                } : null
+                            });
+                        });
+                        handlers.onReports && handlers.onReports(list);
+                    }, (err) => {
+                        handlers.onError && handlers.onError('reports', err);
+                    });
+                } catch (err) {
+                    handlers.onError && handlers.onError('reports', err);
+                }
+            },
+
+            subscribeJournal(uid) {
+                if (!fsMod || !db) return;
+                if (unsubJournal) unsubJournal();
+                try {
+                    unsubJournal = fsMod.onSnapshot(fsMod.doc(db, 'users', uid), (snapshot) => {
+                        const data = snapshot.exists() ? snapshot.data() : null;
+                        handlers.onJournal && handlers.onJournal(data && Array.isArray(data.history) ? data.history : []);
+                    }, (err) => {
+                        handlers.onError && handlers.onError('journal', err);
+                    });
+                } catch (err) {
+                    handlers.onError && handlers.onError('journal', err);
+                }
+            },
+
+            async saveReport(report) {
+                if (!this.ready || !fsMod || !db || !auth.currentUser) throw { code: 'cloud-not-ready' };
+                const author = report.author || {};
+                const payload = {
+                    id: typeof report.id === 'number' ? report.id : Date.now(),
+                    type: String(report.type || 'Laporan warga'),
+                    loc: String(report.loc || ''),
+                    desc: String(report.desc || ''),
+                    status: String(report.status || 'baru'),
+                    date: String(report.date || new Date().toLocaleDateString('id-ID')),
+                    ts: typeof report.ts === 'number' ? report.ts : Date.now(),
+                    authorName: String(author.name || auth.currentUser.displayName || 'Warga'),
+                    authorEmail: String(author.email || auth.currentUser.email || ''),
+                    authorUid: String(auth.currentUser.uid),
+                    authorPhoto: String(author.photo || auth.currentUser.photoURL || '')
+                };
+                const ref = await fsMod.addDoc(fsMod.collection(db, 'reports'), payload);
+                return ref.id;
+            },
+
+            async updateReport(cloudId, patch) {
+                if (!this.ready || !fsMod || !db || !cloudId) return;
+                await fsMod.updateDoc(fsMod.doc(db, 'reports', cloudId), patch);
+            },
+
+            async deleteReport(cloudId) {
+                if (!this.ready || !fsMod || !db || !cloudId) return;
+                await fsMod.deleteDoc(fsMod.doc(db, 'reports', cloudId));
+            },
+
+            async syncJournal(history) {
+                if (!this.ready || !fsMod || !db || !auth.currentUser) return;
+                const clean = (Array.isArray(history) ? history : []).slice(0, 60).map(entry => ({
+                    ts: Number(entry.ts) || Date.now(),
+                    kind: String(entry.kind || 'scan'),
+                    label: String(entry.label || 'Aktivitas'),
+                    co2: Number(entry.co2) || 0,
+                    waste: Number(entry.waste) || 0,
+                    pts: Number(entry.pts) || 0
+                }));
+                await fsMod.setDoc(
+                    fsMod.doc(db, 'users', auth.currentUser.uid),
+                    { history: clean, updatedAt: fsMod.serverTimestamp() },
+                    { merge: true }
+                );
+            }
+        };
+
+        function mapUser(user) {
+            return {
+                uid: user.uid,
+                name: user.displayName || (user.email ? user.email.split('@')[0] : 'Pengguna EcoVision'),
+                email: user.email || '',
+                photo: user.photoURL || '',
+                provider: (user.providerData && user.providerData[0] && user.providerData[0].providerId) || 'firebase'
+            };
+        }
+
+        window.EcoCloud = bridge;
+
+        /* Contoh Firestore Security Rules:
+           rules_version = '2';
+           service cloud.firestore {
+             match /databases/{database}/documents {
+               match /reports/{doc} {
+                 allow read, create, update, delete: if request.auth != null;
+               }
+               match /users/{uid} {
+                 allow read, write: if request.auth != null && request.auth.uid == uid;
+               }
+             }
+           }
+        */
+    </script>
+</body>
+</html>
