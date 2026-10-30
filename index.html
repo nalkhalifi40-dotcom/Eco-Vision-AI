@@ -11,19 +11,19 @@
             theme: {
                 extend: {
                     colors: {
-                        ecoBg: '#F8FAF7',
-                        ecoSurface: '#FFFFFF',
-                        ecoBorder: '#E2E8F0',
-                        ecoPrimary: '#2E7D32',
-                        ecoPrimaryHover: '#1B5E20',
-                        ecoLightBg: '#E8F5E9',
-                        ecoText: '#1E293B',
-                        ecoMuted: '#64748B',
-                        ecoAccent: '#10B981',
-                        ecoAmber: '#D97706',
-                        ecoAmberBg: '#FEF3C7',
-                        ecoRose: '#E11D48',
-                        ecoRoseBg: '#FFE4E6'
+                        ecoBg: '#090D16',
+                        ecoSurface: '#0F172A',
+                        ecoBorder: 'rgba(255, 255, 255, 0.10)',
+                        ecoPrimary: '#10B981',
+                        ecoPrimaryHover: '#00FF87',
+                        ecoLightBg: 'rgba(16, 185, 129, 0.12)',
+                        ecoText: '#E6EDF7',
+                        ecoMuted: '#8DA0B9',
+                        ecoAccent: '#00FF87',
+                        ecoAmber: '#F59E0B',
+                        ecoAmberBg: 'rgba(245, 158, 11, 0.12)',
+                        ecoRose: '#FB7185',
+                        ecoRoseBg: 'rgba(244, 63, 94, 0.12)'
                     },
                     fontFamily: {
                         sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
@@ -437,6 +437,710 @@
             .eco-ring, .mission-chip { transition: none; }
             .eco-leaf-pin.hotspot.kritis .pin-bubble, .eco-pending { animation: none !important; }
         }
+
+        /* ==================================================================
+           CYBER-ECOLOGY / NEO-NATURE THEME LAYER
+           Futuristic deep-space glass, neon mint, electric teal & sunset gold
+           ================================================================== */
+        :root {
+            --cyber-bg: #090D16;
+            --cyber-bg-deep: #060A12;
+            --cyber-surface: rgba(15, 23, 42, 0.65);
+            --cyber-surface-strong: rgba(9, 14, 26, 0.88);
+            --cyber-border: rgba(255, 255, 255, 0.10);
+            --cyber-border-strong: rgba(255, 255, 255, 0.18);
+            --cyber-mint: #10B981;
+            --cyber-mint-bright: #00FF87;
+            --cyber-teal: #0EA5E9;
+            --cyber-gold: #F59E0B;
+            --cyber-text-hi: #F1F5FB;
+            --cyber-text: #D5E0EF;
+            --cyber-muted: #8DA0B9;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background-color: var(--cyber-bg);
+            background-image:
+                radial-gradient(980px 560px at 8% -12%, rgba(16, 185, 129, 0.16), transparent 62%),
+                radial-gradient(920px 540px at 100% -4%, rgba(14, 165, 233, 0.14), transparent 60%),
+                radial-gradient(760px 520px at 50% 112%, rgba(0, 255, 135, 0.06), transparent 62%),
+                linear-gradient(rgba(148, 163, 184, 0.038) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(148, 163, 184, 0.038) 1px, transparent 1px);
+            background-size: auto, auto, auto, 52px 52px, 52px 52px;
+            background-attachment: fixed;
+            color: var(--cyber-text);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        ::selection { background: rgba(0, 255, 135, 0.28); color: #F8FAFC; }
+        ::-webkit-scrollbar-track { background: #0A101C; }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.28); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 255, 135, 0.42); }
+
+        a, button, .clean-card, .kpi-card { -webkit-tap-highlight-color: transparent; }
+        a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 2px solid rgba(0, 255, 135, 0.65);
+            outline-offset: 2px;
+        }
+
+        /* ---------- Navigation ---------- */
+        header {
+            background: rgba(7, 11, 20, 0.72) !important;
+            border-bottom-color: var(--cyber-border) !important;
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            box-shadow: 0 18px 44px -32px rgba(0, 255, 135, 0.35);
+        }
+        header::after {
+            content: '';
+            position: absolute;
+            left: 0; right: 0; bottom: -1px; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 135, 0.45), rgba(14, 165, 233, 0.40), transparent);
+            pointer-events: none;
+        }
+        header .bg-emerald-100 {
+            background: rgba(16, 185, 129, 0.12) !important;
+            border-color: rgba(0, 255, 135, 0.35) !important;
+            color: #6EE7B7 !important;
+            box-shadow: 0 0 22px rgba(0, 255, 135, 0.18), inset 0 0 12px rgba(0, 255, 135, 0.08);
+        }
+        header h1 { letter-spacing: -0.02em; }
+        header h1 > span {
+            background: rgba(0, 255, 135, 0.08) !important;
+            color: #A7F3D0 !important;
+            border: 1px solid rgba(0, 255, 135, 0.22);
+        }
+
+        .cyber-status {
+            display: inline-flex; align-items: center; gap: 7px;
+            margin-top: 5px; padding: 3px 9px; border-radius: 9999px;
+            background: rgba(0, 255, 135, 0.05);
+            border: 1px solid rgba(0, 255, 135, 0.22);
+            color: #A7F3D0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8.5px; font-weight: 700;
+            letter-spacing: 0.12em; text-transform: uppercase;
+            box-shadow: inset 0 0 14px rgba(0, 255, 135, 0.05);
+        }
+        .cyber-dot {
+            position: relative; width: 6px; height: 6px; flex: 0 0 auto;
+            border-radius: 9999px; background: var(--cyber-mint-bright);
+            box-shadow: 0 0 8px rgba(0, 255, 135, 0.9);
+        }
+        .cyber-dot::after {
+            content: ''; position: absolute; inset: -4px; border-radius: 9999px;
+            border: 1px solid rgba(0, 255, 135, 0.55);
+            animation: cyberPing 1.9s ease-out infinite;
+        }
+        @keyframes cyberPing {
+            0% { transform: scale(0.35); opacity: 0.95; }
+            100% { transform: scale(1.9); opacity: 0; }
+        }
+
+        /* ---------- Hero ---------- */
+        .hero-card {
+            background:
+                radial-gradient(760px 360px at 88% -14%, rgba(0, 255, 135, 0.17), transparent 62%),
+                radial-gradient(640px 340px at 6% 118%, rgba(14, 165, 233, 0.20), transparent 64%),
+                linear-gradient(135deg, #08111F 0%, #0A1926 52%, #07141C 100%) !important;
+            border: 1px solid rgba(0, 255, 135, 0.16);
+            box-shadow: 0 42px 90px -48px rgba(0, 255, 135, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            isolation: isolate;
+        }
+        .hero-card::before {
+            content: '';
+            position: absolute; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(0, 255, 135, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 135, 0.05) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: radial-gradient(80% 90% at 50% 20%, #000 20%, transparent 78%);
+            -webkit-mask-image: radial-gradient(80% 90% at 50% 20%, #000 20%, transparent 78%);
+            opacity: 0.75;
+        }
+        .hero-glow.one { background: #00FF87; opacity: 0.20; }
+        .hero-glow.two { background: #0EA5E9; opacity: 0.24; }
+
+        .cyber-hero-title {
+            font-size: clamp(1.9rem, 3.4vw, 2.9rem);
+            line-height: 1.06;
+            font-weight: 800;
+            letter-spacing: -0.035em;
+            color: #F8FAFC;
+            margin: 0;
+        }
+        .cyber-hero-title .grad {
+            display: inline;
+            background: linear-gradient(96deg, #00FF87 4%, #34D399 38%, #22D3EE 72%, #0EA5E9 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            filter: drop-shadow(0 0 18px rgba(0, 255, 135, 0.22));
+        }
+        .cyber-hero-sub {
+            max-width: 34rem;
+            color: #A9BBD0;
+            font-size: 0.75rem;
+            line-height: 1.65;
+        }
+        .cyber-eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 4px 10px; border-radius: 9999px;
+            background: rgba(0, 255, 135, 0.06);
+            border: 1px solid rgba(0, 255, 135, 0.20);
+            color: #A7F3D0;
+            font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+        }
+        .cyber-eyebrow .cyber-dot { width: 5px; height: 5px; }
+
+        .hero-cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; padding-top: 3px; }
+        .btn-neon, .btn-neon-outline {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 10px 16px; border-radius: 12px;
+            font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+            text-decoration: none; cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .btn-neon {
+            background: linear-gradient(135deg, #00FF87 0%, #10B981 55%, #0EA5E9 140%);
+            color: #04110D !important;
+            border-color: rgba(0, 255, 135, 0.55);
+            box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.10), 0 16px 34px -18px rgba(0, 255, 135, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        }
+        .btn-neon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 28px rgba(0, 255, 135, 0.44), 0 20px 44px -18px rgba(0, 255, 135, 0.85);
+        }
+        .btn-neon-outline {
+            background: rgba(245, 158, 11, 0.08);
+            color: #FCD34D !important;
+            border-color: rgba(245, 158, 11, 0.38);
+            box-shadow: inset 0 0 18px rgba(245, 158, 11, 0.06);
+        }
+        .btn-neon-outline:hover {
+            transform: translateY(-2px);
+            background: rgba(245, 158, 11, 0.14);
+            border-color: rgba(245, 158, 11, 0.62);
+            box-shadow: 0 0 24px rgba(245, 158, 11, 0.26);
+        }
+        .hero-card .mission-chip {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.14);
+            color: #E6F7F0;
+            transition: all 0.3s ease;
+        }
+        .hero-card .mission-chip:hover { background: rgba(0, 255, 135, 0.12); border-color: rgba(0, 255, 135, 0.32); }
+        .hero-card .mission-chip.done {
+            background: rgba(0, 255, 135, 0.12);
+            border-color: rgba(0, 255, 135, 0.42);
+            box-shadow: 0 0 18px rgba(0, 255, 135, 0.12);
+        }
+        #ecoScoreValue { color: #F8FAFC; text-shadow: 0 0 22px rgba(0, 255, 135, 0.35); font-family: 'JetBrains Mono', monospace; }
+        #ecoRank { color: #E6F7F0; }
+        .hero-card .aqi-badge { box-shadow: 0 0 14px rgba(0, 255, 135, 0.10); }
+
+        /* ---------- Telemetry / KPI deck ---------- */
+        .kpi-card {
+            position: relative; overflow: hidden;
+            display: block; padding: 14px 15px 13px;
+            border-radius: 16px;
+            background:
+                linear-gradient(150deg, rgba(255, 255, 255, 0.045), transparent 46%),
+                rgba(15, 23, 42, 0.68);
+            border: 1px solid var(--cyber-border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 24px 54px -42px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .kpi-card::after {
+            content: ''; position: absolute; left: 14px; right: 14px; bottom: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 135, 0.55), transparent);
+            opacity: 0.55; transition: opacity 0.3s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(0, 255, 135, 0.28);
+            box-shadow: 0 30px 64px -38px rgba(0, 255, 135, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+        }
+        .kpi-card:hover::after { opacity: 1; }
+        .kpi-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .kpi-icon {
+            width: 30px; height: 30px; border-radius: 9px;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: rgba(0, 255, 135, 0.09);
+            border: 1px solid rgba(0, 255, 135, 0.24);
+            color: #6EE7B7; font-size: 13px;
+        }
+        .kpi-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px; font-weight: 700; letter-spacing: 0.14em;
+            color: #7C8CA6; text-transform: uppercase; white-space: nowrap;
+        }
+        .kpi-value {
+            display: flex; align-items: baseline; gap: 5px;
+            margin-top: 9px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 25px; font-weight: 800; line-height: 1;
+            color: #F1F5FB; letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
+        .kpi-value small { font-size: 9px; font-weight: 700; color: #8DA0B9; letter-spacing: 0.04em; }
+        .kpi-foot { margin-top: 6px; font-size: 9px; font-weight: 600; color: #7C8CA6; line-height: 1.4; }
+        .kpi-card.teal .kpi-icon { background: rgba(14, 165, 233, 0.10); border-color: rgba(14, 165, 233, 0.30); color: #7DD3FC; }
+        .kpi-card.teal::after { background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.55), transparent); }
+        .kpi-card.gold .kpi-icon { background: rgba(245, 158, 11, 0.10); border-color: rgba(245, 158, 11, 0.34); color: #FCD34D; }
+        .kpi-card.gold::after { background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.6), transparent); }
+        .kpi-card.gold .kpi-value { color: #FCD34D; text-shadow: 0 0 20px rgba(245, 158, 11, 0.20); }
+        .kpi-card.rose .kpi-icon { background: rgba(244, 63, 94, 0.10); border-color: rgba(244, 63, 94, 0.32); color: #FDA4AF; }
+        .kpi-card.rose::after { background: linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.55), transparent); }
+
+        /* ---------- Glass cards ---------- */
+        .clean-card {
+            position: relative;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent 42%),
+                var(--cyber-surface) !important;
+            border: 1px solid var(--cyber-border) !important;
+            border-radius: 18px;
+            backdrop-filter: blur(16px) saturate(130%);
+            -webkit-backdrop-filter: blur(16px) saturate(130%);
+            box-shadow: 0 30px 64px -48px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .clean-card::before {
+            content: '';
+            position: absolute; top: 0; left: 18px; right: 18px; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 135, 0.55), rgba(14, 165, 233, 0.42), transparent);
+            opacity: 0.55; transition: opacity 0.3s ease; pointer-events: none;
+        }
+        .clean-card:hover {
+            border-color: rgba(0, 255, 135, 0.24) !important;
+            box-shadow: 0 34px 74px -44px rgba(0, 255, 135, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            transform: translateY(-2px);
+        }
+        .clean-card:hover::before { opacity: 1; }
+        #emergencySection:hover { transform: none; }
+        .clean-card-amber {
+            background: rgba(245, 158, 11, 0.06) !important;
+            border: 1px solid rgba(245, 158, 11, 0.26) !important;
+            border-radius: 16px;
+        }
+        #reportCard { border-left: 3px solid rgba(245, 158, 11, 0.75) !important; box-shadow: 0 30px 64px -48px rgba(0, 0, 0, 0.95), -12px 0 30px -26px rgba(245, 158, 11, 0.45); }
+        #reportCard::before { background: linear-gradient(90deg, rgba(245, 158, 11, 0.65), rgba(245, 158, 11, 0.10), transparent); }
+        #rewardsCard::before { background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.55), rgba(0, 255, 135, 0.35), transparent); }
+        #emergencySection::before { background: linear-gradient(90deg, transparent, rgba(244, 63, 94, 0.55), rgba(14, 165, 233, 0.45), transparent); }
+
+        /* ---------- Form controls ---------- */
+        .custom-input {
+            background: rgba(8, 13, 25, 0.72) !important;
+            border: 1px solid rgba(148, 163, 184, 0.22) !important;
+            color: var(--cyber-text-hi) !important;
+            transition: all 0.3s ease;
+        }
+        .custom-input::placeholder { color: #64748B !important; }
+        .custom-input:hover { border-color: rgba(148, 163, 184, 0.34) !important; }
+        .custom-input:focus {
+            background: rgba(8, 13, 25, 0.92) !important;
+            border-color: rgba(0, 255, 135, 0.55) !important;
+            box-shadow: 0 0 0 3px rgba(0, 255, 135, 0.12), 0 0 22px rgba(0, 255, 135, 0.08) !important;
+            outline: none;
+        }
+        select.custom-input option { background: #0B1222; color: #E6EDF7; }
+        input[type="range"] { accent-color: #00FF87; }
+        .calc-range { accent-color: #00FF87; }
+
+        /* ---------- Neon actions ---------- */
+        #btnScan {
+            background: linear-gradient(135deg, #00FF87 0%, #10B981 48%, #0EA5E9 135%) !important;
+            color: #04110D !important;
+            border: 1px solid rgba(0, 255, 135, 0.55);
+            box-shadow: 0 0 0 1px rgba(0, 255, 135, 0.10), 0 16px 34px -18px rgba(0, 255, 135, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+            transition: all 0.3s ease;
+        }
+        #btnScan:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(0, 255, 135, 0.46), 0 20px 44px -18px rgba(0, 255, 135, 0.85);
+        }
+        #btnScan:disabled {
+            background: rgba(255, 255, 255, 0.07) !important;
+            color: #8DA0B9 !important;
+            border-color: rgba(255, 255, 255, 0.12) !important;
+            box-shadow: none;
+        }
+        #btnSaveAction, #btnSaveCarbon {
+            background: linear-gradient(135deg, #10B981 0%, #0EA5E9 140%) !important;
+            color: #F8FAFC !important;
+            border: 1px solid rgba(0, 255, 135, 0.35);
+            box-shadow: 0 14px 30px -20px rgba(0, 255, 135, 0.65);
+            transition: all 0.3s ease;
+        }
+        #btnSaveAction:hover:not(:disabled), #btnSaveCarbon:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 24px rgba(0, 255, 135, 0.30), 0 18px 36px -20px rgba(0, 255, 135, 0.7);
+        }
+        #btnSaveAction:disabled {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: #64748B !important;
+            border-color: rgba(255, 255, 255, 0.10) !important;
+            box-shadow: none;
+        }
+        #reportCard form button[type="submit"] {
+            background: linear-gradient(135deg, #F59E0B 0%, #F97316 100%) !important;
+            color: #1A1206 !important;
+            border: 1px solid rgba(245, 158, 11, 0.55);
+            box-shadow: 0 14px 30px -18px rgba(245, 158, 11, 0.85);
+            transition: all 0.3s ease;
+        }
+        #reportCard form button[type="submit"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 26px rgba(245, 158, 11, 0.38), 0 18px 38px -18px rgba(245, 158, 11, 0.85);
+        }
+        #mapPinForm button[type="submit"] {
+            background: linear-gradient(135deg, #E11D48, #F43F5E) !important;
+            border: 1px solid rgba(244, 63, 94, 0.5);
+            box-shadow: 0 12px 26px -16px rgba(244, 63, 94, 0.8);
+        }
+        .map-mark-btn {
+            background: rgba(16, 185, 129, 0.10) !important;
+            border: 1px solid rgba(0, 255, 135, 0.28);
+            color: #A7F3D0 !important;
+            box-shadow: inset 0 0 16px rgba(0, 255, 135, 0.05);
+        }
+        .map-mark-btn:hover { background: rgba(16, 185, 129, 0.18) !important; box-shadow: 0 0 20px rgba(0, 255, 135, 0.20); }
+        .map-mark-btn.active { background: rgba(245, 158, 11, 0.20) !important; border-color: rgba(245, 158, 11, 0.6); color: #FDE68A !important; }
+
+        .cyber-login-btn {
+            background: rgba(16, 185, 129, 0.10) !important;
+            border: 1px solid rgba(0, 255, 135, 0.38) !important;
+            color: #A7F3D0 !important;
+            box-shadow: 0 0 18px rgba(0, 255, 135, 0.18), inset 0 0 14px rgba(0, 255, 135, 0.05);
+            transition: all 0.3s ease;
+        }
+        .cyber-login-btn:hover {
+            background: rgba(16, 185, 129, 0.18) !important;
+            border-color: rgba(0, 255, 135, 0.62) !important;
+            color: #E6F7F0 !important;
+            box-shadow: 0 0 28px rgba(0, 255, 135, 0.32);
+            transform: translateY(-1px);
+        }
+        .cyber-user-chip {
+            background: rgba(15, 23, 42, 0.72) !important;
+            border: 1px solid var(--cyber-border) !important;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+        .cyber-user-chip:hover { border-color: rgba(0, 255, 135, 0.28) !important; }
+
+        /* ---------- Login modal ---------- */
+        #authModal > .absolute.inset-0 {
+            background: radial-gradient(600px 400px at 50% 20%, rgba(0, 255, 135, 0.08), transparent 60%), rgba(3, 7, 14, 0.82) !important;
+            backdrop-filter: blur(10px);
+        }
+        .auth-panel {
+            background:
+                radial-gradient(420px 240px at 80% -10%, rgba(0, 255, 135, 0.10), transparent 60%),
+                var(--cyber-surface-strong) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(22px) saturate(140%);
+            -webkit-backdrop-filter: blur(22px) saturate(140%);
+            box-shadow: 0 40px 100px -40px rgba(0, 0, 0, 0.95), 0 0 40px -20px rgba(0, 255, 135, 0.30);
+            border-radius: 20px;
+        }
+        .auth-panel::before {
+            content: ''; position: absolute; top: 0; left: 20px; right: 20px; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 135, 0.6), rgba(14, 165, 233, 0.45), transparent);
+        }
+        #btnGoogleLogin {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border-color: rgba(255, 255, 255, 0.14) !important;
+            color: #EAF1FA !important;
+            transition: all 0.3s ease;
+        }
+        #btnGoogleLogin:hover {
+            background: rgba(255, 255, 255, 0.09) !important;
+            border-color: rgba(0, 255, 135, 0.35) !important;
+            box-shadow: 0 0 22px rgba(0, 255, 135, 0.14);
+        }
+        #btnGithubLogin {
+            background: #0D1117 !important;
+            border-color: rgba(255, 255, 255, 0.16) !important;
+            transition: all 0.3s ease;
+        }
+        #btnGithubLogin:hover {
+            border-color: rgba(0, 255, 135, 0.35) !important;
+            box-shadow: 0 0 22px rgba(0, 255, 135, 0.14);
+        }
+
+        /* ---------- Utility remapping for the dark canvas ---------- */
+        .bg-white { background-color: rgba(15, 23, 42, 0.72) !important; }
+        #flashOverlay { background-color: #FFFFFF !important; }
+        .bg-slate-50 { background-color: rgba(255, 255, 255, 0.035) !important; }
+        .bg-slate-100 { background-color: rgba(255, 255, 255, 0.06) !important; }
+        .bg-slate-200 { background-color: rgba(148, 163, 184, 0.16) !important; }
+        .bg-slate-700 { background-color: rgba(148, 163, 184, 0.16) !important; }
+        .bg-slate-900 { background-color: #04080F !important; }
+        .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.10) !important; }
+        .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.14) !important; }
+        .bg-teal-100 { background-color: rgba(14, 165, 233, 0.14) !important; }
+        .bg-amber-50 { background-color: rgba(245, 158, 11, 0.09) !important; }
+        .bg-amber-100 { background-color: rgba(245, 158, 11, 0.14) !important; }
+        .bg-rose-50 { background-color: rgba(244, 63, 94, 0.10) !important; }
+        .bg-rose-50\/70 { background-color: rgba(244, 63, 94, 0.08) !important; }
+        .bg-violet-50 { background-color: rgba(139, 92, 246, 0.12) !important; }
+        .bg-sky-50 { background-color: rgba(14, 165, 233, 0.10) !important; }
+
+        .text-slate-900 { color: #F8FAFC !important; }
+        .text-slate-800 { color: #EAF1FA !important; }
+        .text-slate-700 { color: #D7E2F0 !important; }
+        .text-slate-600 { color: #C2D0E2 !important; }
+        .text-slate-500 { color: #9FB0C6 !important; }
+        .text-slate-400 { color: #8597AE !important; }
+        .text-slate-300 { color: #5F7089 !important; }
+        .text-emerald-700, .text-emerald-800 { color: #34D399 !important; }
+        .text-teal-700 { color: #2DD4BF !important; }
+        .text-amber-700, .text-amber-800 { color: #FBBF24 !important; }
+        .text-rose-600, .text-rose-700 { color: #FB7185 !important; }
+        .text-violet-700 { color: #C4B5FD !important; }
+        .text-sky-700 { color: #7DD3FC !important; }
+
+        .border-slate-100 { border-color: rgba(255, 255, 255, 0.06) !important; }
+        .border-slate-200 { border-color: rgba(255, 255, 255, 0.10) !important; }
+        .border-slate-300 { border-color: rgba(255, 255, 255, 0.18) !important; }
+        .border-emerald-300 { border-color: rgba(0, 255, 135, 0.32) !important; }
+        .border-amber-200 { border-color: rgba(245, 158, 11, 0.28) !important; }
+        .border-rose-200 { border-color: rgba(244, 63, 94, 0.30) !important; }
+        .border-sky-200 { border-color: rgba(14, 165, 233, 0.30) !important; }
+
+        .hover\:bg-slate-200:hover { background-color: rgba(255, 255, 255, 0.10) !important; }
+        .hover\:bg-slate-50:hover { background-color: rgba(255, 255, 255, 0.06) !important; }
+        .hover\:bg-rose-50:hover { background-color: rgba(244, 63, 94, 0.14) !important; }
+        .hover\:text-rose-600:hover, .hover\:text-rose-700:hover { color: #FB7185 !important; }
+        .hover\:bg-emerald-50:hover { background-color: rgba(16, 185, 129, 0.14) !important; }
+        .hover\:text-emerald-700:hover, .hover\:text-emerald-800:hover { color: #6EE7B7 !important; }
+        .hover\:border-emerald-300:hover { border-color: rgba(0, 255, 135, 0.35) !important; }
+        .hover\:bg-emerald-50\/40:hover { background-color: rgba(16, 185, 129, 0.10) !important; }
+        .disabled\:bg-slate-200:disabled { background-color: rgba(255, 255, 255, 0.05) !important; }
+        .disabled\:text-slate-400:disabled { color: #64748B !important; }
+
+        /* ---------- Telemetry, AQI & map components ---------- */
+        .stat-tab { color: #8597AE; transition: all 0.3s ease; }
+        .stat-tab:hover { color: #D7E2F0; }
+        .stat-tab.active {
+            background: rgba(16, 185, 129, 0.16) !important;
+            color: #A7F3D0 !important;
+            box-shadow: inset 0 0 0 1px rgba(0, 255, 135, 0.25);
+        }
+        .report-filter {
+            background: rgba(255, 255, 255, 0.035) !important;
+            border-color: rgba(255, 255, 255, 0.10) !important;
+            color: #8597AE !important;
+            transition: all 0.3s ease;
+        }
+        .report-filter:hover { border-color: rgba(0, 255, 135, 0.28) !important; color: #D7E2F0 !important; }
+        .report-filter.active {
+            background: rgba(16, 185, 129, 0.16) !important;
+            border-color: rgba(0, 255, 135, 0.42) !important;
+            color: #A7F3D0 !important;
+            box-shadow: 0 0 16px rgba(0, 255, 135, 0.10);
+        }
+        .status-new { background: rgba(14, 165, 233, 0.14) !important; color: #7DD3FC !important; border-color: rgba(14, 165, 233, 0.32) !important; }
+        .status-progress { background: rgba(245, 158, 11, 0.14) !important; color: #FCD34D !important; border-color: rgba(245, 158, 11, 0.32) !important; }
+        .status-done { background: rgba(16, 185, 129, 0.14) !important; color: #6EE7B7 !important; border-color: rgba(0, 255, 135, 0.32) !important; }
+        .status-bad { background: rgba(244, 63, 94, 0.14) !important; color: #FDA4AF !important; border-color: rgba(244, 63, 94, 0.32) !important; }
+        .hazard-critical { background: rgba(244, 63, 94, 0.16) !important; color: #FDA4AF !important; }
+        .hazard-warn { background: rgba(245, 158, 11, 0.16) !important; color: #FCD34D !important; }
+        .hazard-safe { background: rgba(16, 185, 129, 0.16) !important; color: #6EE7B7 !important; }
+        .j-scan { background: rgba(16, 185, 129, 0.14); color: #6EE7B7; }
+        .j-report { background: rgba(245, 158, 11, 0.14); color: #FCD34D; }
+        .j-carbon { background: rgba(14, 165, 233, 0.14); color: #7DD3FC; }
+        .j-reward { background: rgba(139, 92, 246, 0.16); color: #C4B5FD; }
+        .upcycle-tab { background: rgba(255, 255, 255, 0.035) !important; border-color: rgba(255, 255, 255, 0.10) !important; color: #A9BBD0 !important; transition: all 0.3s ease; }
+        .upcycle-tab:hover { background: rgba(16, 185, 129, 0.10) !important; color: #A7F3D0 !important; border-color: rgba(0, 255, 135, 0.30) !important; }
+        .upcycle-tab.active {
+            background: rgba(16, 185, 129, 0.16) !important;
+            border-color: rgba(0, 255, 135, 0.45) !important;
+            color: #A7F3D0 !important;
+            box-shadow: 0 0 20px rgba(0, 255, 135, 0.12);
+        }
+        .aqi-tile {
+            background: rgba(255, 255, 255, 0.035) !important;
+            border-color: rgba(255, 255, 255, 0.09) !important;
+            transition: all 0.3s ease;
+        }
+        .aqi-tile:hover { border-color: rgba(0, 255, 135, 0.30) !important; transform: translateY(-1px); }
+        .aqi-tile.active {
+            background: rgba(16, 185, 129, 0.12) !important;
+            border-color: rgba(0, 255, 135, 0.45) !important;
+            box-shadow: 0 0 22px rgba(0, 255, 135, 0.10);
+        }
+        .aqi-city-name { color: #EAF1FA !important; }
+        .aqi-region { color: #7C8CA6 !important; }
+        .aqi-value { color: #F1F5FB !important; }
+        .aqi-unit { color: #7C8CA6 !important; }
+        .aqi-pm { color: #9FB0C6 !important; }
+        .aqi-bar { background: rgba(148, 163, 184, 0.16) !important; }
+        .aqi-badge { border-color: rgba(255, 255, 255, 0.12); }
+        .aqi-good { color: #6EE7B7 !important; background: rgba(16, 185, 129, 0.14) !important; border-color: rgba(0, 255, 135, 0.30) !important; }
+        .aqi-mid { color: #FCD34D !important; background: rgba(245, 158, 11, 0.14) !important; border-color: rgba(245, 158, 11, 0.30) !important; }
+        .aqi-poor { color: #FDBA74 !important; background: rgba(249, 115, 22, 0.14) !important; border-color: rgba(249, 115, 22, 0.32) !important; }
+        .aqi-bad { color: #FDA4AF !important; background: rgba(244, 63, 94, 0.14) !important; border-color: rgba(244, 63, 94, 0.32) !important; }
+        .aqi-severe { color: #D8B4FE !important; background: rgba(147, 51, 234, 0.16) !important; border-color: rgba(147, 51, 234, 0.34) !important; }
+        .em-alert {
+            background: rgba(244, 63, 94, 0.055) !important;
+            border-color: rgba(244, 63, 94, 0.20) !important;
+            transition: all 0.25s ease;
+        }
+        .em-alert:hover { background: rgba(244, 63, 94, 0.10) !important; border-color: rgba(244, 63, 94, 0.36) !important; }
+        .em-name { color: #EAF1FA !important; }
+        .em-sub { color: #7C8CA6 !important; }
+        #emergencyMap { background: #0B1222; border-color: rgba(255, 255, 255, 0.10); box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55); }
+        .leaflet-container { background: #0B1222 !important; }
+        .leaflet-control-zoom a {
+            background: rgba(9, 14, 26, 0.92) !important;
+            color: #D7E2F0 !important;
+            border-color: rgba(255, 255, 255, 0.10) !important;
+        }
+        .leaflet-control-zoom a:hover { background: rgba(16, 185, 129, 0.22) !important; color: #A7F3D0 !important; }
+        .leaflet-control-attribution {
+            background: rgba(9, 14, 26, 0.82) !important;
+            color: #7C8CA6 !important;
+        }
+        .leaflet-control-attribution a { color: #34D399 !important; }
+        .eco-leaf-pin .pin-label {
+            background: rgba(7, 11, 20, 0.92) !important;
+            color: #E6EDF7 !important;
+            border-color: rgba(0, 255, 135, 0.25) !important;
+        }
+        .map-fallback { background: #0B1222 !important; }
+        .map-fallback-icon { background: rgba(16, 185, 129, 0.10); border-color: rgba(0, 255, 135, 0.28); color: #6EE7B7; }
+        #mapPinForm {
+            background: rgba(9, 14, 26, 0.92) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 26px 60px -30px rgba(0, 0, 0, 0.95), 0 0 30px -18px rgba(0, 255, 135, 0.20);
+        }
+        .map-info { border-color: rgba(0, 255, 135, 0.20); background: rgba(7, 11, 20, 0.94); }
+        .map-info-btn:hover { background: rgba(0, 255, 135, 0.12); border-color: rgba(0, 255, 135, 0.28); }
+
+        /* ---------- Rewards & leaderboard ---------- */
+        .reward-balance {
+            background:
+                radial-gradient(280px 180px at 90% -20%, rgba(245, 158, 11, 0.22), transparent 70%),
+                linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(15, 23, 42, 0.92) 48%, rgba(14, 165, 233, 0.14)) !important;
+            border: 1px solid rgba(245, 158, 11, 0.24);
+            box-shadow: 0 24px 48px -32px rgba(245, 158, 11, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+        }
+        .reward-balance::after { background: radial-gradient(circle, rgba(245, 158, 11, 0.28), transparent 68%) !important; }
+        .reward-points { color: #FDE68A; text-shadow: 0 0 22px rgba(245, 158, 11, 0.28); }
+        .reward-tier {
+            background: rgba(245, 158, 11, 0.12) !important;
+            border-color: rgba(245, 158, 11, 0.36) !important;
+            color: #FDE68A !important;
+        }
+        .reward-progress { background: rgba(255, 255, 255, 0.12) !important; }
+        .reward-progress-fill { background: linear-gradient(90deg, #F59E0B, #00FF87) !important; }
+        .reward-next-text { color: rgba(226, 232, 240, 0.78) !important; }
+        .lb-row {
+            background: rgba(255, 255, 255, 0.035) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            transition: all 0.3s ease;
+        }
+        .lb-row:hover { border-color: rgba(0, 255, 135, 0.22) !important; background: rgba(255, 255, 255, 0.055) !important; }
+        .lb-row.is-me {
+            background: rgba(16, 185, 129, 0.10) !important;
+            border-color: rgba(0, 255, 135, 0.32) !important;
+        }
+        .lb-rank { background: rgba(148, 163, 184, 0.16) !important; color: #9FB0C6 !important; }
+        .lb-rank.top1 { background: rgba(245, 158, 11, 0.20) !important; color: #FCD34D !important; }
+        .lb-rank.top2 { background: rgba(203, 213, 225, 0.14) !important; color: #CBD5E1 !important; }
+        .lb-rank.top3 { background: rgba(249, 115, 22, 0.18) !important; color: #FDBA74 !important; }
+        .lb-name { color: #EAF1FA !important; }
+        .lb-sub { color: #7C8CA6 !important; }
+        .lb-points { color: #FCD34D !important; }
+        .reward-item {
+            background: rgba(255, 255, 255, 0.035) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            transition: all 0.3s ease;
+        }
+        .reward-item:hover { border-color: rgba(245, 158, 11, 0.22) !important; }
+        .reward-item.affordable { border-color: rgba(245, 158, 11, 0.32) !important; background: rgba(245, 158, 11, 0.055) !important; }
+        .reward-icon { background: rgba(245, 158, 11, 0.10) !important; border-color: rgba(245, 158, 11, 0.28) !important; color: #FCD34D !important; }
+        .reward-name { color: #EAF1FA !important; }
+        .reward-desc { color: #7C8CA6 !important; }
+        .reward-count { background: rgba(245, 158, 11, 0.16) !important; color: #FDE68A !important; }
+        .reward-btn {
+            background: rgba(245, 158, 11, 0.16) !important;
+            border-color: rgba(245, 158, 11, 0.38) !important;
+            color: #FDE68A !important;
+            transition: all 0.3s ease;
+        }
+        .reward-btn:hover { background: rgba(245, 158, 11, 0.26) !important; box-shadow: 0 0 18px rgba(245, 158, 11, 0.18); }
+        .reward-btn:disabled {
+            background: rgba(255, 255, 255, 0.04) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: #64748B !important;
+        }
+        .redeemed-chip { background: rgba(139, 92, 246, 0.14) !important; border-color: rgba(167, 139, 250, 0.28) !important; color: #C4B5FD !important; }
+
+        /* ---------- Smaller components ---------- */
+        .toast {
+            background: rgba(9, 14, 26, 0.92) !important;
+            border: 1px solid rgba(0, 255, 135, 0.22);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.85), 0 0 24px -14px rgba(0, 255, 135, 0.4);
+        }
+        .toast-success { border-color: rgba(0, 255, 135, 0.38); }
+        .toast-warning { border-color: rgba(245, 158, 11, 0.40); }
+        .toast-danger { border-color: rgba(244, 63, 94, 0.42); }
+        .fly-points { color: #00FF87; text-shadow: 0 0 18px rgba(0, 255, 135, 0.55); }
+        .badge-unlock { box-shadow: 0 0 0 2px #34D399, 0 0 26px rgba(0, 255, 135, 0.45); }
+        #viewport {
+            border-color: rgba(0, 255, 135, 0.20) !important;
+            box-shadow: inset 0 0 70px rgba(0, 255, 135, 0.05), 0 28px 60px -42px rgba(0, 255, 135, 0.28);
+        }
+        #cameraPlaceholder {
+            background:
+                radial-gradient(420px 260px at 50% 0%, rgba(0, 255, 135, 0.10), transparent 62%),
+                rgba(5, 9, 17, 0.94) !important;
+        }
+        #scanProgress { background: rgba(4, 8, 15, 0.92) !important; }
+        #scanStatusBadge { border-color: rgba(245, 158, 11, 0.28) !important; }
+        .calc-ok { background: linear-gradient(90deg, #10B981, #00FF87) !important; }
+        .calc-warn { background: linear-gradient(90deg, #F59E0B, #FBBF24) !important; }
+        .calc-bad { background: linear-gradient(90deg, #E11D48, #FB7185) !important; }
+        .risk-high { background: linear-gradient(90deg, #E11D48, #FB7185) !important; }
+        .risk-mid { background: linear-gradient(90deg, #B45309, #F59E0B) !important; }
+        .risk-low { background: linear-gradient(90deg, #047857, #00FF87) !important; }
+        #resRiskBar, #calcBar { box-shadow: 0 0 12px rgba(0, 255, 135, 0.18); }
+
+        /* Soften the light inner panels inside dark cards */
+        .clean-card .bg-white { background-color: rgba(255, 255, 255, 0.045) !important; }
+        .clean-card .border-slate-200 { border-color: rgba(255, 255, 255, 0.10) !important; }
+        .clean-card .shadow-inner { box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35); }
+
+        @media (max-width: 640px) {
+            .cyber-hero-title { font-size: 2rem; }
+            .cyber-hero-sub { font-size: 0.72rem; }
+            .hero-card { border-radius: 18px; }
+            .hero-cta-row .btn-neon, .hero-cta-row .btn-neon-outline { flex: 1 1 100%; }
+            .kpi-card { padding: 12px; }
+            .kpi-value { font-size: 21px; }
+            .kpi-tag { font-size: 7.5px; letter-spacing: 0.10em; }
+            .cyber-status { font-size: 7.5px; letter-spacing: 0.08em; }
+            #emergencyMap { height: 280px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            .cyber-dot::after { animation: none !important; }
+            .clean-card, .kpi-card, .btn-neon, .btn-neon-outline { transition: none; }
+            .clean-card:hover, .kpi-card:hover { transform: none; }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col pb-12">
@@ -449,32 +1153,19 @@
                     <i class="fa-solid fa-seedling text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                    <h1 class="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2 flex-wrap">
                         EcoVision AI <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium">Smart Planet Monitor</span>
                     </h1>
-                    <p class="text-xs text-slate-500">Platform Deteksi Lingkungan, Daur Ulang & Monitor Karbon Real-time</p>
+                    <p class="text-xs text-slate-500">Platform Deteksi Lingkungan, Daur Ulang &amp; Monitor Karbon Real-time</p>
+                    <div class="cyber-status" role="status" aria-live="polite">
+                        <span class="cyber-dot" aria-hidden="true"></span>
+                        <span>AI Neural Network Active</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- Global Metric Counters -->
-            <div class="flex flex-wrap justify-end items-center gap-3">
-                <div class="flex items-center gap-4 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 text-xs font-semibold">
-                    <div id="statCO2Box" class="flex items-center gap-2 text-emerald-700" title="Karbon Terselamatkan">
-                        <i class="fa-solid fa-leaf text-base"></i>
-                        <span><strong id="headerCO2" class="text-sm">0.0</strong> kg CO₂e</span>
-                    </div>
-                    <div class="h-4 w-px bg-slate-200"></div>
-                    <div id="statWasteBox" class="flex items-center gap-2 text-teal-700" title="Sampah Terkelola">
-                        <i class="fa-solid fa-recycle text-base"></i>
-                        <span><strong id="headerWaste" class="text-sm">0.0</strong> kg Sampah</span>
-                    </div>
-                    <div class="h-4 w-px bg-slate-200"></div>
-                    <div id="statPointsBox" class="flex items-center gap-2 text-amber-700" title="Eco Points">
-                        <i class="fa-solid fa-award text-base"></i>
-                        <span><strong id="headerPoints" class="text-sm">0</strong> Pts</span>
-                    </div>
-                </div>
-
+            <!-- Global controls -->
+            <div class="flex flex-wrap justify-end items-center gap-2.5">
                 <button onclick="toggleAudio()" id="btnAudioToggle" class="px-3 py-2 rounded-xl bg-slate-100 border border-slate-200 hover:bg-slate-200 text-xs text-slate-700 font-medium transition flex items-center gap-1.5">
                     <i class="fa-solid fa-volume-high text-emerald-700"></i> <span id="sfxLabel">SFX: Aktif</span>
                 </button>
@@ -497,13 +1188,22 @@
             <div class="hero-glow two"></div>
 
             <div class="relative grid gap-6 lg:grid-cols-12 lg:items-center">
-                <div class="lg:col-span-7 space-y-3">
-                    <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-200/90">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+                <div class="lg:col-span-7 space-y-3.5">
+                    <div class="cyber-eyebrow">
+                        <span class="cyber-dot" aria-hidden="true"></span>
                         Ringkasan Hari Ini · <span id="heroDate">—</span>
                     </div>
-                    <h2 class="text-xl md:text-2xl font-extrabold leading-snug">Lingkungan lebih sehat dimulai dari satu aksi kecil.</h2>
-                    <p class="text-[11px] md:text-xs text-emerald-100/80 max-w-lg leading-relaxed">Selesaikan misi harian, catat dampak nyata, dan pantau skor keberlanjutanmu bersama warga sekitar.</p>
+                    <h2 class="cyber-hero-title">Masa Depan Hijau,<br><span class="grad">Ditenagai AI.</span></h2>
+                    <p class="cyber-hero-sub">EcoVision AI memadukan visi komputer, telemetri udara, dan aksi warga untuk menjaga bumi secara real-time. Selesaikan misi harian dan lihat dampak nyata.</p>
+
+                    <div class="hero-cta-row">
+                        <a href="#scannerSection" class="btn-neon">
+                            <i class="fa-solid fa-camera-retro"></i> Scan Sampah
+                        </a>
+                        <a href="#reportCard" class="btn-neon-outline">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Lapor Bahaya
+                        </a>
+                    </div>
 
                     <div id="missionList" class="flex flex-wrap gap-2 pt-1"></div>
 
@@ -520,8 +1220,8 @@
                         <svg viewBox="0 0 120 120" class="w-32 h-32 -rotate-90">
                             <defs>
                                 <linearGradient id="ecoRingGrad" x1="0" y1="0" x2="1" y2="1">
-                                    <stop offset="0%" stop-color="#6EE7B7"></stop>
-                                    <stop offset="100%" stop-color="#D9F99D"></stop>
+                                    <stop offset="0%" stop-color="#00FF87"></stop>
+                                    <stop offset="100%" stop-color="#0EA5E9"></stop>
                                 </linearGradient>
                             </defs>
                             <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="10"></circle>
@@ -558,8 +1258,47 @@
             </div>
         </section>
 
+        <!-- TELEMETRY DECK: HIGH-TECH LAB KPIs -->
+        <section class="lg:col-span-12 grid grid-cols-2 lg:grid-cols-4 gap-3" aria-label="Telemetri ringkas EcoVision">
+            <a href="#scannerSection" id="statCO2Box" class="kpi-card" title="Karbon terselamatkan">
+                <div class="kpi-top">
+                    <span class="kpi-icon"><i class="fa-solid fa-leaf"></i></span>
+                    <span class="kpi-tag">Carbon Saved</span>
+                </div>
+                <div class="kpi-value"><strong id="headerCO2">0.0</strong><small>kg CO₂e</small></div>
+                <p class="kpi-foot">Emisi yang berhasil dicegah dari aksi hijau.</p>
+            </a>
+
+            <a href="#statsCard" id="statWasteBox" class="kpi-card teal" title="Sampah terkelola">
+                <div class="kpi-top">
+                    <span class="kpi-icon"><i class="fa-solid fa-recycle"></i></span>
+                    <span class="kpi-tag">Waste Diverted</span>
+                </div>
+                <div class="kpi-value"><strong id="headerWaste">0.0</strong><small>kg</small></div>
+                <p class="kpi-foot">Volume sampah yang dialihkan dari TPA.</p>
+            </a>
+
+            <a href="#rewardsCard" id="statPointsBox" class="kpi-card gold" title="Eco Points">
+                <div class="kpi-top">
+                    <span class="kpi-icon"><i class="fa-solid fa-award"></i></span>
+                    <span class="kpi-tag">Eco Points</span>
+                </div>
+                <div class="kpi-value"><strong id="headerPoints">0</strong><small>pts</small></div>
+                <p class="kpi-foot">Poin untuk membuka reward hijau.</p>
+            </a>
+
+            <a href="#emergencySection" class="kpi-card rose" title="Titik darurat terpantau">
+                <div class="kpi-top">
+                    <span class="kpi-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+                    <span class="kpi-tag">Hazard Map</span>
+                </div>
+                <div class="kpi-value"><strong id="kpiHotspotCount">0</strong><small>titik</small></div>
+                <p class="kpi-foot">Hotspot sampah &amp; polusi terpantau live.</p>
+            </a>
+        </section>
+
         <!-- EMERGENCY WATCH: AQI & INTERACTIVE HAZARD MAP -->
-        <section id="emergencySection" class="lg:col-span-12 clean-card p-4 md:p-5 space-y-4 relative overflow-hidden">
+        <section id="emergencySection" class="lg:col-span-12 clean-card p-4 md:p-5 space-y-4 relative overflow-hidden scroll-mt-24">
             <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-3">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
@@ -678,7 +1417,7 @@
         </section>
 
         <!-- LEFT SECTION: CAMERA SCANNER & ANALYZER (7 Cols) -->
-        <section class="lg:col-span-7 space-y-6">
+        <section id="scannerSection" class="lg:col-span-7 space-y-6 scroll-mt-24">
             
             <!-- ECOSCAN AI CAMERA CONTAINER -->
             <div class="clean-card p-4 space-y-4">
@@ -863,7 +1602,7 @@
             </div>
 
             <!-- COMMUNITY ECO-HAZARD REPORTER -->
-            <div id="reportCard" class="clean-card p-5 space-y-4 border-l-4 border-l-amber-500">
+            <div id="reportCard" class="clean-card p-5 space-y-4 border-l-4 border-l-amber-500 scroll-mt-24">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
@@ -916,7 +1655,7 @@
         <section class="lg:col-span-5 space-y-6">
             
             <!-- STATS: COMPOSITION & 7-DAY TREND -->
-            <div class="clean-card p-5 space-y-4">
+            <div id="statsCard" class="clean-card p-5 space-y-4 scroll-mt-24">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3 gap-2 flex-wrap">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-chart-pie text-emerald-700"></i>
@@ -1179,7 +1918,7 @@
     <!-- AUTH / LOGIN MODAL -->
     <div id="authModal" class="hidden fixed inset-0 z-[60] items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
         <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeAuthModal()"></div>
-        <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
+        <div class="auth-panel relative w-full max-w-sm bg-white rounded-2xl shadow-2xl p-5 space-y-4 max-h-[92vh] overflow-y-auto">
             <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-700 flex items-center justify-center">
@@ -1482,7 +2221,7 @@
             if (!currentUser) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'px-3 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-emerald-800 text-xs font-bold transition flex items-center gap-1.5 shadow-sm';
+                btn.className = 'cyber-login-btn px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5';
                 btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Masuk';
                 btn.addEventListener('click', openAuthModal);
                 area.appendChild(btn);
@@ -1490,7 +2229,7 @@
             }
 
             const chip = document.createElement('div');
-            chip.className = 'flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl pl-1 pr-1 py-1';
+            chip.className = 'cyber-user-chip flex items-center gap-2 rounded-xl pl-1 pr-1 py-1';
             chip.title = `${currentUser.name}${currentUser.email ? ' · ' + currentUser.email : ''}`;
 
             const photo = safePhotoUrl(currentUser.photo);
@@ -2017,7 +2756,7 @@
             badge.append(dot, text);
         }
 
-        const SCAN_BUTTON_HTML = '<i class="fa-solid fa-expand"></i> Tangkap & Analisis AI';
+        const SCAN_BUTTON_HTML = '<i class="fa-solid fa-expand"></i> Scan Sampah';
         const SCAN_BUTTON_LOADING_HTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memuat Model AI...';
 
         function updateScanButtonState() {
@@ -2654,9 +3393,9 @@
                             ecoState.counts.paper,
                             ecoState.counts.water
                         ],
-                        backgroundColor: ['#10B981', '#E11D48', '#84CC16', '#3B82F6', '#F59E0B'],
+                        backgroundColor: ['#00FF87', '#E11D48', '#84CC16', '#0EA5E9', '#F59E0B'],
                         borderWidth: 2,
-                        borderColor: '#FFFFFF'
+                        borderColor: 'rgba(9, 14, 26, 0.92)'
                     }]
                 },
                 options: {
@@ -2675,7 +3414,7 @@
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: { font: { family: 'Plus Jakarta Sans', size: 11 }, boxWidth: 12 }
+                            labels: { font: { family: 'Plus Jakarta Sans', size: 11 }, boxWidth: 12, color: '#B6C2D4' }
                         },
                         tooltip: {
                             callbacks: {
@@ -2700,10 +3439,10 @@
                 ctx.save();
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillStyle = '#0F172A';
+                ctx.fillStyle = '#F1F5FB';
                 ctx.font = '800 22px "Plus Jakarta Sans", sans-serif';
                 ctx.fillText(String(total), x, y - 6);
-                ctx.fillStyle = '#94A3B8';
+                ctx.fillStyle = '#7C8CA6';
                 ctx.font = '600 9px "Plus Jakarta Sans", sans-serif';
                 ctx.fillText('TOTAL SCAN', x, y + 14);
                 ctx.restore();
@@ -2763,15 +3502,15 @@
                         x: {
                             grid: { display: false },
                             border: { display: false },
-                            ticks: { font: { family: 'Plus Jakarta Sans', size: 10 }, color: '#94A3B8' }
+                            ticks: { font: { family: 'Plus Jakarta Sans', size: 10 }, color: '#8597AE' }
                         },
                         y: {
                             beginAtZero: true,
-                            grid: { color: '#F1F5F9' },
+                            grid: { color: 'rgba(148, 163, 184, 0.14)' },
                             border: { display: false },
                             ticks: {
                                 font: { family: 'Plus Jakarta Sans', size: 10 },
-                                color: '#94A3B8',
+                                color: '#8597AE',
                                 maxTicksLimit: 5,
                                 callback: (value) => `${value} kg`
                             }
@@ -3557,16 +4296,15 @@
                 ecoMap = L.map(container, {
                     zoomControl: true,
                     minZoom: 5,
-                    maxZoom: 18,
+                    maxZoom: 16,
                     center: [-7.3, 110.0],
                     zoom: 6,
                     scrollWheelZoom: false,
                     attributionControl: true
                 });
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                    subdomains: 'abcd',
-                    maxZoom: 19,
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 16,
+                    attribution: 'Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
                 }).addTo(ecoMap);
                 ecoMarkers = L.layerGroup().addTo(ecoMap);
                 ecoMap.on('click', handleMapClick);
@@ -3701,6 +4439,7 @@
 
             const countEl = document.getElementById('emergencyCount');
             if (countEl) countEl.textContent = `${items.length} titik`;
+            setText('kpiHotspotCount', items.length);
             wrap.innerHTML = '';
 
             if (!items.length) {
