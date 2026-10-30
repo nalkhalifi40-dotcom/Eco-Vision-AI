@@ -40,6 +40,9 @@
     <script defer src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet.js: peta komunitas interaktif -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
@@ -195,16 +198,244 @@
         .j-scan { background: #ECFDF5; color: #047857; }
         .j-report { background: #FEF3C7; color: #B45309; }
         .j-carbon { background: #E0F2FE; color: #0369A1; }
+        .j-reward { background: #F3E8FF; color: #7E22CE; }
 
         .calc-range { width: 100%; cursor: pointer; accent-color: #2E7D32; }
         .calc-ok { background: #10B981; }
         .calc-warn { background: #F59E0B; }
         .calc-bad { background: #F43F5E; }
 
+        /* ---------- Emergency watch: AQI & interactive map ---------- */
+        .aqi-tile {
+            background: #F8FAF7; border: 1px solid #E2E8F0; border-radius: 14px;
+            padding: 9px 10px; text-align: left; cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .aqi-tile:hover { border-color: #A7F3D0; transform: translateY(-1px); }
+        .aqi-tile.active { background: #ECFDF5; border-color: #10B981; box-shadow: 0 8px 20px -16px rgba(6, 78, 59, 0.55); }
+        .aqi-tile-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .aqi-city-name { font-size: 11px; font-weight: 800; color: #1E293B; }
+        .aqi-region { font-size: 9px; color: #94A3B8; font-weight: 600; }
+        .aqi-main { display: flex; align-items: baseline; gap: 4px; margin-top: 4px; }
+        .aqi-value { font-family: 'JetBrains Mono', monospace; font-size: 21px; line-height: 1; font-weight: 700; color: #0F172A; }
+        .aqi-unit { font-size: 8px; letter-spacing: 0.12em; font-weight: 700; color: #94A3B8; }
+        .aqi-pm { margin-left: auto; font-size: 9px; font-weight: 600; color: #64748B; }
+        .aqi-bar { height: 4px; border-radius: 9999px; background: #E2E8F0; overflow: hidden; margin-top: 7px; }
+        .aqi-bar-fill { display: block; height: 100%; width: 0; border-radius: 9999px; transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .aqi-bar-fill.good { background: #10B981; }
+        .aqi-bar-fill.mid { background: #F59E0B; }
+        .aqi-bar-fill.poor { background: #F97316; }
+        .aqi-bar-fill.bad { background: #E11D48; }
+        .aqi-bar-fill.severe { background: #9333EA; }
+        .aqi-poor { color: #C2410C; background: #FFEDD5; border-color: #FDBA74; }
+        .aqi-bad { color: #9F1239; background: #FFE4E6; border-color: #FECDD3; }
+        .aqi-severe { color: #6B21A8; background: #F3E8FF; border-color: #D8B4FE; }
+
+        .map-mark-btn {
+            display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+            border-radius: 9px; background: #1E293B; color: #FFFFFF; font-size: 10px;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .map-mark-btn:hover { background: #0F172A; }
+        .map-mark-btn.active { background: #B45309; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2); }
+
+        .emergency-map {
+            height: 300px;
+            background: #E7EEF0;
+            border: 1px solid #D8E4E0;
+            box-shadow: inset 0 0 30px rgba(15, 23, 42, 0.06);
+            touch-action: manipulation;
+        }
+        @media (min-width: 768px) { .emergency-map { height: 340px; } }
+        .emergency-map .map-ui { z-index: 1000; }
+        .emergency-map #mapPinForm.map-ui { z-index: 1100; }
+        .emergency-map.is-marking { cursor: crosshair; box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.95); }
+        .emergency-map.is-marking #leafletMap, .emergency-map.is-marking .leaflet-container { cursor: crosshair !important; }
+        #leafletMap { position: absolute; inset: 0; z-index: 0; }
+        .leaflet-container { font-family: inherit; background: #E7EEF0; }
+        .leaflet-control-zoom { border: 0 !important; box-shadow: 0 6px 18px -10px rgba(15, 23, 42, 0.5) !important; border-radius: 10px !important; overflow: hidden; }
+        .leaflet-control-zoom a {
+            width: 28px !important; height: 28px !important; line-height: 28px !important;
+            color: #0F172A !important; background: rgba(255, 255, 255, 0.94) !important;
+            border-color: #E2E8F0 !important; font-weight: 700 !important;
+        }
+        .leaflet-control-zoom a:hover { background: #ECFDF5 !important; color: #047857 !important; }
+        .leaflet-control-attribution {
+            font-size: 8px !important; color: #64748B !important;
+            background: rgba(255, 255, 255, 0.82) !important; border-radius: 6px 0 0 0;
+        }
+        .leaflet-control-attribution a { color: #047857 !important; }
+        .eco-map-icon { background: transparent; border: 0; }
+        .eco-leaf-pin {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            width: 160px; cursor: pointer; transition: transform 0.18s ease;
+            filter: drop-shadow(0 6px 10px rgba(2, 6, 23, 0.28));
+        }
+        .eco-leaf-pin:hover, .eco-leaf-pin.is-active { transform: translateY(-4px) scale(1.06); }
+        .eco-leaf-pin .pin-label { color: #0F172A; background: rgba(255, 255, 255, 0.94); border-color: rgba(15, 23, 42, 0.12); }
+        .eco-leaf-pin.hotspot .pin-bubble { background: #E11D48; }
+        .eco-leaf-pin.hotspot.tinggi .pin-bubble { background: #F59E0B; }
+        .eco-leaf-pin.hotspot.sedang .pin-bubble { background: #0EA5E9; }
+        .eco-leaf-pin.report .pin-bubble { background: #10B981; }
+        .eco-leaf-pin.report.kritis .pin-bubble { background: #E11D48; }
+        .eco-leaf-pin.hotspot.kritis .pin-bubble { animation: pinPulse 2s ease-in-out infinite; }
+        .eco-map-pending { background: transparent; border: 0; }
+        .eco-pending {
+            width: 20px; height: 20px; border-radius: 9999px; border: 2px solid #F59E0B;
+            background: rgba(251, 191, 36, 0.35); box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.16);
+            animation: pendingPing 1.2s ease-in-out infinite;
+        }
+        .map-fallback {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 8px; padding: 24px; text-align: center; background: #F8FAF7;
+        }
+        .map-fallback-icon {
+            width: 42px; height: 42px; border-radius: 14px; background: #ECFDF5;
+            border: 1px solid #A7F3D0; color: #047857; display: flex; align-items: center; justify-content: center;
+        }
+
+        .pin-bubble {
+            width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+            display: flex; align-items: center; justify-content: center;
+            border: 2px solid rgba(255, 255, 255, 0.9); background: #10B981;
+            box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.8);
+        }
+        .pin-bubble i { transform: rotate(45deg); font-size: 11px; color: #FFFFFF; }
+        @keyframes pinPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45), 0 6px 14px -6px rgba(0, 0, 0, 0.8); }
+            50% { box-shadow: 0 0 0 7px rgba(225, 29, 72, 0), 0 6px 14px -6px rgba(0, 0, 0, 0.8); }
+        }
+        .pin-label {
+            max-width: 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font-size: 9px; font-weight: 700; color: #F8FAFC; background: rgba(2, 6, 23, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.25); padding: 1px 5px; border-radius: 9999px;
+        }
+        @keyframes pendingPing { 50% { box-shadow: 0 0 0 12px rgba(251, 191, 36, 0.02); } }
+
+        .map-info {
+            background: rgba(15, 23, 42, 0.92); border: 1px solid rgba(148, 163, 184, 0.28);
+            backdrop-filter: blur(10px); border-radius: 12px; padding: 10px 12px;
+            color: #E2E8F0; box-shadow: 0 16px 30px -18px rgba(0, 0, 0, 0.8);
+        }
+        .map-info-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .map-info-chip {
+            font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+            padding: 2px 6px; border-radius: 9999px; background: rgba(148, 163, 184, 0.16); color: #CBD5E1;
+        }
+        .map-info-chip.hot { background: rgba(244, 63, 94, 0.18); color: #FDA4AF; }
+        .map-info-chip.user { background: rgba(16, 185, 129, 0.18); color: #6EE7B7; }
+        .map-info-title { font-size: 12px; font-weight: 800; color: #F8FAFC; margin-top: 6px; line-height: 1.25; }
+        .map-info-sub { font-size: 10px; color: #94A3B8; font-weight: 600; margin-top: 1px; }
+        .map-info-note { font-size: 10px; color: #CBD5E1; line-height: 1.45; margin-top: 6px; }
+        .map-info-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+        .map-info-btn {
+            font-size: 10px; font-weight: 700; border-radius: 7px; padding: 3px 8px;
+            border: 1px solid rgba(148, 163, 184, 0.3); color: #E2E8F0;
+            background: rgba(148, 163, 184, 0.12); cursor: pointer; transition: background 0.2s ease;
+        }
+        .map-info-btn:hover { background: rgba(148, 163, 184, 0.25); }
+        .map-info-sev { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; padding: 2px 7px; border-radius: 9999px; }
+        .sev-kritis { background: rgba(225, 29, 72, 0.2); color: #FDA4AF; }
+        .sev-tinggi { background: rgba(245, 158, 11, 0.18); color: #FCD34D; }
+        .sev-sedang { background: rgba(14, 165, 233, 0.18); color: #7DD3FC; }
+
+        .em-alert {
+            width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+            border-radius: 9px; background: rgba(255, 255, 255, 0.65); border: 1px solid #FECDD3;
+            text-align: left; transition: background 0.18s ease, border-color 0.18s ease;
+        }
+        .em-alert:hover { background: #FFFFFF; border-color: #FDA4AF; }
+        .em-dot { width: 7px; height: 7px; border-radius: 9999px; flex: 0 0 auto; background: #E11D48; }
+        .em-dot.tinggi { background: #F59E0B; }
+        .em-dot.sedang { background: #0EA5E9; }
+        .em-info { min-width: 0; flex: 1; }
+        .em-name { display: block; font-size: 10px; font-weight: 800; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .em-sub { display: block; font-size: 9px; color: #94A3B8; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .map-info-coords { display: block; font-size: 9px; color: #94A3B8; font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+
+        /* ---------- Eco-points, rewards & leaderboard ---------- */
+        .reward-balance {
+            position: relative; overflow: hidden; border-radius: 14px; color: #FFFFFF;
+            background: linear-gradient(135deg, #064E3B 0%, #065F46 55%, #0F766E 100%);
+            padding: 12px 13px; box-shadow: 0 16px 32px -24px rgba(6, 78, 59, 0.9);
+        }
+        .reward-balance::after {
+            content: ''; position: absolute; width: 130px; height: 130px; right: -48px; top: -62px;
+            border-radius: 9999px; background: radial-gradient(circle, rgba(217, 249, 157, 0.32), transparent 68%);
+        }
+        .reward-points { font-family: 'JetBrains Mono', monospace; font-size: 25px; line-height: 1.1; font-weight: 800; letter-spacing: -0.02em; }
+        .reward-tier {
+            font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+            padding: 3px 8px; border-radius: 9999px; background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.2); white-space: nowrap;
+        }
+        .reward-progress { height: 5px; border-radius: 9999px; background: rgba(255, 255, 255, 0.18); overflow: hidden; margin-top: 10px; }
+        .reward-progress-fill { display: block; height: 100%; width: 0; border-radius: 9999px; background: linear-gradient(90deg, #6EE7B7, #D9F99D); transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        .reward-next-text { font-size: 9px; color: rgba(236, 253, 245, 0.82); font-weight: 600; margin-top: 5px; line-height: 1.4; }
+
+        .lb-row {
+            display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+            border: 1px solid #E8EEF0; border-radius: 10px; background: #F8FAF7;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+        .lb-row.is-me { background: #ECFDF5; border-color: #6EE7B7; }
+        .lb-rank {
+            width: 20px; height: 20px; border-radius: 7px; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 800; color: #64748B; background: #E2E8F0;
+        }
+        .lb-rank.top1 { background: #FEF3C7; color: #B45309; }
+        .lb-rank.top2 { background: #E2E8F0; color: #475569; }
+        .lb-rank.top3 { background: #FFEDD5; color: #C2410C; }
+        .lb-avatar {
+            width: 24px; height: 24px; border-radius: 8px; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 800; color: #FFFFFF; background: #0F766E;
+            overflow: hidden;
+        }
+        .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .lb-info { min-width: 0; flex: 1; }
+        .lb-name { display: block; font-size: 10px; font-weight: 800; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lb-sub { display: block; font-size: 9px; font-weight: 600; color: #94A3B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lb-points { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: #047857; white-space: nowrap; }
+
+        .reward-item {
+            display: flex; align-items: center; gap: 9px; padding: 8px 9px;
+            border: 1px solid #E2E8F0; border-radius: 11px; background: #F8FAF7;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+        .reward-item.affordable { border-color: #A7F3D0; background: #F0FDF4; }
+        .reward-icon {
+            width: 30px; height: 30px; border-radius: 9px; flex: 0 0 auto;
+            display: flex; align-items: center; justify-content: center;
+            background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; font-size: 12px;
+        }
+        .reward-item.affordable .reward-icon { background: #D1FAE5; }
+        .reward-info { min-width: 0; flex: 1; }
+        .reward-name { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 800; color: #334155; }
+        .reward-desc { display: block; font-size: 9px; color: #94A3B8; font-weight: 600; line-height: 1.35; }
+        .reward-count { font-size: 8px; font-weight: 800; color: #7E22CE; background: #F3E8FF; border-radius: 9999px; padding: 1px 5px; }
+        .reward-btn {
+            flex: 0 0 auto; font-size: 9px; font-weight: 800; border-radius: 8px;
+            padding: 5px 8px; background: #0F766E; color: #FFFFFF; border: 1px solid #0F766E;
+            transition: background 0.2s ease, opacity 0.2s ease; white-space: nowrap;
+        }
+        .reward-btn:hover { background: #115E59; }
+        .reward-btn:disabled { background: #E2E8F0; border-color: #E2E8F0; color: #94A3B8; cursor: not-allowed; }
+        .reward-btn:focus-visible { outline: 2px solid #047857; outline-offset: 2px; }
+        .redeemed-chip {
+            display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 700;
+            color: #6B21A8; background: #F3E8FF; border: 1px solid #E9D5FF;
+            padding: 2px 7px; border-radius: 9999px;
+        }
+        .reward-empty { font-size: 10px; color: #94A3B8; font-weight: 600; text-align: center; padding: 6px 0; }
+
         @media (prefers-reduced-motion: reduce) {
             .scan-line, .animate-pulse, .animate-ping { animation: none !important; }
             .reveal { opacity: 1; transform: none; }
             .eco-ring, .mission-chip { transition: none; }
+            .eco-leaf-pin.hotspot.kritis .pin-bubble, .eco-pending { animation: none !important; }
         }
     </style>
 </head>
@@ -324,6 +555,125 @@
                 <span class="text-emerald-100/75">Suhu <strong id="liveTemp" class="text-white font-mono">29.0</strong> °C</span>
                 <span class="text-emerald-100/75">Kelembapan <strong id="liveHum" class="text-white font-mono">68</strong> %</span>
                 <span class="ml-auto text-emerald-100/70 font-mono flex items-center gap-1.5"><i class="fa-regular fa-clock"></i><span id="liveClock">--:--:--</span></span>
+            </div>
+        </section>
+
+        <!-- EMERGENCY WATCH: AQI & INTERACTIVE HAZARD MAP -->
+        <section id="emergencySection" class="lg:col-span-12 clean-card p-4 md:p-5 space-y-4 relative overflow-hidden">
+            <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-tower-broadcast"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2 flex-wrap">
+                            Darurat Sampah &amp; Polusi Udara
+                            <span id="aqiSourceBadge" class="aqi-badge aqi-mid">MENGHUBUNGKAN</span>
+                        </h2>
+                        <p class="text-[11px] text-slate-400">Pantau AQI kota besar dan tandai titik darurat sampah/polusi di peta komunitas.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] text-slate-400 font-medium">
+                    <span class="hidden sm:inline">Diperbarui <span id="aqiUpdatedAt" class="font-mono text-slate-600">--:--</span></span>
+                    <button type="button" id="btnRefreshAqi" onclick="fetchAirQuality(true)" title="Muat ulang data AQI" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 text-slate-500 transition flex items-center justify-center disabled:opacity-50">
+                        <i id="aqiRefreshIcon" class="fa-solid fa-rotate text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
+                <!-- INTERACTIVE MAP -->
+                <div class="xl:col-span-7 space-y-2.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-semibold text-slate-500">
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Titik darurat</span>
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Laporan warga</span>
+                            <span class="text-slate-300">·</span>
+                            <span class="text-slate-400">Leaflet · OpenStreetMap</span>
+                        </div>
+                        <button type="button" id="btnToggleMark" onclick="toggleMapMarkMode()" class="map-mark-btn">
+                            <i class="fa-solid fa-location-dot"></i> <span id="mapMarkBtnLabel">Tandai Titik</span>
+                        </button>
+                    </div>
+
+                    <div id="emergencyMap" class="emergency-map relative w-full rounded-xl overflow-hidden">
+                        <div id="leafletMap" aria-label="Peta komunitas titik darurat sampah dan polusi"></div>
+                        <div id="mapFallback" class="map-fallback absolute inset-0 hidden">
+                            <div class="map-fallback-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                            <div class="text-[11px] font-extrabold text-slate-700">Peta Leaflet belum siap</div>
+                            <p class="text-[10px] text-slate-400 leading-relaxed max-w-[240px]">Periksa koneksi internet untuk memuat Leaflet.js dan ubin OpenStreetMap. Daftar titik darurat tetap aktif di samping.</p>
+                        </div>
+
+                        <div id="mapMarkHint" class="map-ui hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-amber-400 text-amber-950 text-[10px] font-extrabold shadow-lg whitespace-nowrap pointer-events-none">
+                            <i class="fa-solid fa-crosshairs mr-1"></i>Klik peta untuk menandai titik
+                        </div>
+                        <div id="mapPinInfo" class="map-ui hidden absolute left-3 bottom-3 right-3 sm:right-auto sm:max-w-[270px]" onclick="event.stopPropagation()"></div>
+
+                        <form id="mapPinForm" class="map-ui hidden absolute inset-x-3 bottom-3 rounded-xl bg-white p-3 shadow-2xl space-y-2" onclick="event.stopPropagation()" onsubmit="saveMapPin(event)">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[11px] font-extrabold text-slate-800"><i class="fa-solid fa-thumbtack text-rose-500 mr-1"></i>Tandai Titik Darurat</span>
+                                <span id="pinCoords" class="text-[9px] font-mono text-slate-400">—</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <select id="pinType" class="custom-input text-[11px] font-semibold rounded-lg p-2">
+                                    <option value="Darurat Sampah">Darurat Sampah</option>
+                                    <option value="Polusi Udara">Polusi Udara</option>
+                                    <option value="Pencemaran Air">Pencemaran Air</option>
+                                    <option value="Limbah B3">Limbah B3</option>
+                                </select>
+                                <select id="pinSeverity" class="custom-input text-[11px] font-semibold rounded-lg p-2">
+                                    <option value="tinggi">Prioritas: Tinggi</option>
+                                    <option value="kritis">Prioritas: Kritis</option>
+                                    <option value="sedang">Prioritas: Sedang</option>
+                                </select>
+                                <input type="text" id="pinLocation" required maxlength="80" placeholder="Lokasi (cth: Kali Code, DIY)" class="col-span-2 custom-input text-[11px] font-medium rounded-lg p-2">
+                                <input type="text" id="pinNote" maxlength="140" placeholder="Catatan singkat (opsional)" class="col-span-2 custom-input text-[11px] font-medium rounded-lg p-2">
+                            </div>
+                            <div class="flex justify-end gap-2">
+                                <button type="button" onclick="cancelMapPin()" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold transition">Batal</button>
+                                <button type="submit" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold transition"><i class="fa-solid fa-thumbtack mr-1"></i>Simpan Titik</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- AQI CITY MONITOR -->
+                <div class="xl:col-span-5 space-y-2.5">
+                    <div id="aqiCityList" class="grid grid-cols-2 gap-2"></div>
+
+                    <div id="aqiDetail" class="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <div id="aqiDetailCity" class="text-[11px] font-bold text-slate-800">Jakarta</div>
+                                <div id="aqiDetailRegion" class="text-[10px] text-slate-400">DKI Jakarta</div>
+                            </div>
+                            <span id="aqiDetailBadge" class="aqi-badge aqi-mid">Sedang</span>
+                        </div>
+                        <div class="flex items-end gap-2">
+                            <span id="aqiDetailValue" class="aqi-value text-slate-800">--</span>
+                            <span class="text-[9px] uppercase tracking-wider text-slate-400 mb-1">US AQI</span>
+                            <span id="aqiDetailPm" class="ml-auto text-[10px] font-semibold text-slate-500">PM2.5 -- µg/m³</span>
+                        </div>
+                        <div class="aqi-bar"><span id="aqiDetailBar" class="aqi-bar-fill mid" style="width:0%"></span></div>
+                        <p id="aqiDetailAdvice" class="text-[11px] text-slate-600 leading-relaxed">Memuat data kualitas udara…</p>
+                        <div class="flex justify-between gap-2 text-[9px] text-slate-400 font-medium">
+                            <span id="aqiDetailSource">Sumber: Open-Meteo</span>
+                            <span id="aqiDetailUpdated">--:--</span>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-rose-200 bg-rose-50/70 p-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-rose-700"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Peringatan Titik Darurat</span>
+                            <span id="emergencyCount" class="text-[9px] font-bold text-rose-600">0 titik</span>
+                        </div>
+                        <div id="emergencyAlerts" class="mt-2 space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                            <div class="text-[10px] text-rose-600/70 text-center py-2">Memuat titik darurat…</div>
+                        </div>
+                    </div>
+
+                    <p class="text-[9px] text-slate-400 leading-relaxed">AQI: Open-Meteo (live, refresh 5 menit) · Peta Leaflet: hotspot contoh + laporan warga tersinkron. Pin yang kamu buat langsung masuk ke laporan komunitas dan CSV.</p>
+                </div>
             </div>
         </section>
 
@@ -606,9 +956,9 @@
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-calculator text-emerald-700"></i>
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Kalkulator Jejak Karbon</h3>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Kalkulator Jejak Karbon AI</h3>
                     </div>
-                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded">SIMULASI HARIAN</span>
+                    <span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded">AI INSIGHT</span>
                 </div>
 
                 <div class="space-y-3">
@@ -660,6 +1010,53 @@
                         <i class="fa-solid fa-floppy-disk"></i> Simpan
                     </button>
                 </div>
+            </div>
+
+            <!-- ECO-POINTS, REWARDS & LEADERBOARD -->
+            <div id="rewardsCard" class="clean-card p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-gift text-violet-500"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Eco-Points &amp; Rewards</h3>
+                    </div>
+                    <span class="bg-violet-50 text-violet-700 text-[10px] font-bold px-2 py-0.5 rounded">GAMIFIKASI</span>
+                </div>
+
+                <div class="reward-balance">
+                    <div class="relative z-10 flex items-start justify-between gap-2">
+                        <div>
+                            <span class="text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-100/80">Saldo Eco Points</span>
+                            <div class="flex items-baseline gap-1.5 mt-0.5">
+                                <span id="rewardPoints" class="reward-points" aria-live="polite">0</span>
+                                <span class="text-[10px] font-bold text-emerald-100/80">pts</span>
+                            </div>
+                        </div>
+                        <span id="rewardTier" class="reward-tier">Pemula</span>
+                    </div>
+                    <div class="reward-progress relative z-10">
+                        <span id="rewardProgressBar" class="reward-progress-fill"></span>
+                    </div>
+                    <p id="rewardNextText" class="reward-next-text relative z-10">Scan objek dan kirim laporan untuk mengumpulkan poin.</p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500"><i class="fa-solid fa-ranking-star text-amber-500 mr-1"></i>Papan Peringkat</h4>
+                        <span class="text-[9px] font-bold text-slate-400">TOP 5</span>
+                    </div>
+                    <div id="leaderboardList" class="space-y-1.5"></div>
+                    <p class="text-[9px] text-slate-400 leading-relaxed">Peringkat menggabungkan poinmu dengan kontribusi laporan komunitas. Peserta contoh ditandai agar demo tetap hidup tanpa data cloud.</p>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <h4 class="text-[10px] font-extrabold uppercase tracking-wider text-slate-500"><i class="fa-solid fa-hand-holding-heart text-emerald-600 mr-1"></i>Tukar Reward Hijau</h4>
+                        <span class="text-[9px] font-bold text-slate-400">KATALOG</span>
+                    </div>
+                    <div id="rewardCatalog" class="space-y-1.5"></div>
+                </div>
+
+                <div id="redeemedSummary" class="text-[9px] text-slate-400 leading-relaxed">Belum ada reward diklaim.</div>
             </div>
 
             <!-- DIY UPCYCLING IDEAS GENERATOR -->
@@ -840,7 +1237,7 @@
             </form>
             </div>
 
-            <p class="text-[10px] text-slate-400 leading-relaxed text-center">Mode demo menyimpan sesi di localStorage perangkat ini. Isi <span class="font-mono">FIREBASE_CONFIG</span> untuk mengaktifkan login Google/GitHub dan sinkronisasi cloud.</p>
+            <p class="text-[10px] text-slate-400 leading-relaxed text-center">Login Google/GitHub terhubung ke Firebase dan data tersinkron ke cloud. Jika Firebase tidak dapat dimuat, aplikasi otomatis memakai sesi demo lokal.</p>
         </div>
     </div>
 
@@ -866,15 +1263,16 @@
         const SESSION_KEY = 'ecovision_session';
         let currentUser = null;
 
-        /* Firebase: isi nilai dari Firebase Console (Project settings → Your apps).
-           Selama masih kosong, aplikasi otomatis memakai mode demo lokal. */
+        /* Firebase: kredensial proyek EcoVision AI (Firebase Console → Project settings → Your apps).
+           Bila Firebase gagal dimuat, aplikasi otomatis memakai mode demo lokal. */
         const FIREBASE_CONFIG = {
-            apiKey: '',
-            authDomain: '',
-            projectId: '',
-            storageBucket: '',
-            messagingSenderId: '',
-            appId: ''
+            apiKey: 'AIzaSyD5ZQxZev445yxFkkHwGtsjEtrByQwiD8c',
+            authDomain: 'ecovision-ai-28b43.firebaseapp.com',
+            projectId: 'ecovision-ai-28b43',
+            storageBucket: 'ecovision-ai-28b43.firebasestorage.app',
+            messagingSenderId: '1079342975645',
+            appId: '1:1079342975645:web:c16122243f045e64cf2274',
+            measurementId: 'G-28GT1QWY1W'
         };
         window.FIREBASE_CONFIG = FIREBASE_CONFIG;
 
@@ -895,6 +1293,7 @@
                 unlocked: [],
                 history: [],
                 footprint: null,
+                redemptions: [],
                 missions: { date: '', scan: 0, report: 0, carbon: 0, bonus: false }
             };
         }
@@ -1078,6 +1477,7 @@
             const area = document.getElementById('authArea');
             if (!area) return;
             area.innerHTML = '';
+            renderRewards();
 
             if (!currentUser) {
                 const btn = document.createElement('button');
@@ -1211,8 +1611,32 @@
             if (!STATUS_META[normalized.status]) normalized.status = 'baru';
             if (!normalized.author || typeof normalized.author !== 'object') {
                 normalized.author = normalized.authorName
-                    ? { name: normalized.authorName, email: normalized.authorEmail || '' }
+                    ? { name: normalized.authorName, email: normalized.authorEmail || '', photo: normalized.authorPhoto || '' }
                     : null;
+            }
+            const lat = Number(normalized.lat);
+            const lng = Number(normalized.lng);
+            const mapX = Number(normalized.mapX);
+            const mapY = Number(normalized.mapY);
+            const hasGeo = Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+            const hasLegacy = Number.isFinite(mapX) && Number.isFinite(mapY) && mapX >= 0 && mapX <= 100 && mapY >= 0 && mapY <= 100;
+            if (hasGeo || hasLegacy) {
+                if (hasGeo) {
+                    normalized.lat = lat;
+                    normalized.lng = lng;
+                } else {
+                    normalized.mapX = mapX;
+                    normalized.mapY = mapY;
+                }
+                if (!['sedang', 'tinggi', 'kritis'].includes(normalized.severity)) normalized.severity = 'tinggi';
+                normalized.source = 'map';
+            } else {
+                delete normalized.lat;
+                delete normalized.lng;
+                delete normalized.mapX;
+                delete normalized.mapY;
+                delete normalized.severity;
+                if (normalized.source === 'map') delete normalized.source;
             }
             return normalized;
         }
@@ -1259,7 +1683,7 @@
             clearTimeout(cloudState.journalTimer);
             cloudState.journalTimer = setTimeout(() => {
                 if (!cloudActive()) return;
-                window.EcoCloud.syncJournal(ecoState.history).catch(() => {});
+                window.EcoCloud.syncJournal(ecoState.history, ecoState.points, ecoState.redemptions).catch(() => {});
             }, 900);
         }
 
@@ -1314,6 +1738,7 @@
                 'auth/popup-blocked': 'Popup diblokir browser. Izinkan popup untuk situs ini lalu coba lagi.',
                 'auth/unauthorized-domain': 'Domain ini belum diizinkan. Tambahkan di Firebase Console → Authentication → Settings → Authorized domains.',
                 'auth/operation-not-allowed': 'Provider login ini belum diaktifkan di Firebase Console.',
+                'auth/operation-not-supported-in-this-environment': 'Login popup tidak didukung di lingkungan ini. Buka aplikasi melalui http/https (localhost atau hosting).',
                 'auth/account-exists-with-different-credential': 'Email ini sudah terdaftar dengan provider lain. Gunakan provider tersebut.',
                 'auth/network-request-failed': 'Jaringan bermasalah. Periksa koneksi internet.',
                 'auth/invalid-api-key': 'Konfigurasi Firebase tidak valid (apiKey).',
@@ -1352,6 +1777,10 @@
             setAuthError('');
             const bridge = window.EcoCloud;
             if (bridge && bridge.configured) {
+                if (window.location.protocol === 'file:') {
+                    setAuthError('Login Google/GitHub memerlukan halaman yang di-hosting (http/https). Jalankan lewat local server atau hosting, lalu daftarkan domainnya di Firebase Console → Authentication → Authorized domains.');
+                    return;
+                }
                 if (!bridge.ready) {
                     setAuthError('Firebase masih dimuat. Coba lagi sebentar.');
                     return;
@@ -1532,6 +1961,7 @@
             updateFootprintCalc();
             setupCanvas();
             ensureDetector();
+            initEmergencyWatch();
             renderLoop();
             setupReveal();
             setupDropZone();
@@ -2495,7 +2925,7 @@
                 return;
             }
 
-            const icons = { scan: 'fa-camera', report: 'fa-bullhorn', carbon: 'fa-calculator' };
+            const icons = { scan: 'fa-camera', report: 'fa-bullhorn', carbon: 'fa-calculator', reward: 'fa-gift' };
             history.forEach(entry => {
                 const row = document.createElement('div');
                 row.className = 'flex gap-3 items-start';
@@ -2521,7 +2951,7 @@
 
                 const meta = document.createElement('div');
                 meta.className = 'flex flex-wrap gap-1.5 mt-1 text-[10px] font-semibold';
-                if (entry.pts) meta.appendChild(journalTag(`+${entry.pts} poin`, 'text-amber-800 bg-amber-100'));
+                if (entry.pts) meta.appendChild(journalTag(`${entry.pts > 0 ? '+' : ''}${entry.pts} poin`, entry.pts > 0 ? 'text-amber-800 bg-amber-100' : 'text-rose-700 bg-rose-50'));
                 if (entry.co2) meta.appendChild(journalTag(`+${Number(entry.co2).toFixed(1)} kg CO₂e`, 'text-emerald-800 bg-emerald-50'));
                 if (entry.waste) meta.appendChild(journalTag(`+${Number(entry.waste).toFixed(1)} kg sampah`, 'text-teal-700 bg-teal-100'));
 
@@ -2582,7 +3012,7 @@
                 { name: 'sampah', value: waste, tip: 'Pilah sampah organik menjadi kompos agar emisi metana di TPA berkurang.' }
             ].sort((a, b) => b.value - a.value);
 
-            setText('calcTip', `Kontribusi terbesar: ${parts[0].name} (${parts[0].value.toFixed(1)} kg CO₂e). ${parts[0].tip}`);
+            setText('calcTip', `Insight AI: kontribusi terbesar ${parts[0].name} (${parts[0].value.toFixed(1)} kg CO₂e). ${parts[0].tip}`);
             return total;
         }
 
@@ -2627,6 +3057,236 @@
             el.textContent = text;
         }
 
+        /* ---------- Eco-points rewards & leaderboard ---------- */
+        const ECO_REWARDS = [
+            { id: 'bibit', name: 'Bibit Pohon', cost: 30, icon: 'fa-seedling', desc: 'Satu bibit untuk penghijauan sekolah.' },
+            { id: 'tumbler', name: 'Tumbler Eco', cost: 90, icon: 'fa-bottle-water', desc: 'Diskon minuman di mitra kafe hijau.' },
+            { id: 'kompos', name: 'Paket Kompos', cost: 180, icon: 'fa-recycle', desc: 'Starter kit kompos rumah tangga.' }
+        ];
+
+        const DEMO_LEADERS = [
+            { name: 'Dewi Anggraini', points: 235, sub: 'Relawan Bank Sampah' },
+            { name: 'Raka Mahendra', points: 180, sub: 'Pelapor 4 titik darurat' },
+            { name: 'Nur Aisyah', points: 140, sub: 'Komunitas Kali Code' },
+            { name: 'Bagas Prakoso', points: 95, sub: '12 objek EcoScan' }
+        ];
+
+        function rewardTierFor(points) {
+            if (points >= 250) return 'Planet Guardian';
+            if (points >= 120) return 'Penjaga Hijau';
+            if (points >= 50) return 'Sahabat Bumi';
+            return 'Pemula';
+        }
+
+        function renderRewards() {
+            const catalog = document.getElementById('rewardCatalog');
+            if (!catalog) return;
+            const points = Math.max(0, Number(ecoState.points) || 0);
+            const redemptions = Array.isArray(ecoState.redemptions) ? ecoState.redemptions : [];
+            ecoState.redemptions = redemptions;
+
+            animateValue(document.getElementById('rewardPoints'), points, 0, 500);
+            setText('rewardTier', rewardTierFor(points));
+
+            const nextReward = ECO_REWARDS.filter(reward => reward.cost > points).sort((a, b) => a.cost - b.cost)[0] || null;
+            const bar = document.getElementById('rewardProgressBar');
+            if (bar) {
+                bar.style.width = nextReward
+                    ? `${Math.max(4, Math.min(100, (points / nextReward.cost) * 100))}%`
+                    : '100%';
+            }
+            setText('rewardNextText', nextReward
+                ? `Kumpulkan ${nextReward.cost - points} poin lagi untuk ${nextReward.name}.`
+                : 'Semua reward telah terbuka. Terus catat aksi hijau untuk menjaga peringkat.');
+
+            catalog.innerHTML = '';
+            ECO_REWARDS.forEach(reward => {
+                const owned = redemptions.filter(entry => entry.id === reward.id).length;
+                const affordable = points >= reward.cost;
+                const item = document.createElement('div');
+                item.className = 'reward-item' + (affordable ? ' affordable' : '');
+
+                const icon = document.createElement('div');
+                icon.className = 'reward-icon';
+                icon.innerHTML = `<i class="fa-solid ${reward.icon}"></i>`;
+
+                const info = document.createElement('div');
+                info.className = 'reward-info';
+                const name = document.createElement('div');
+                name.className = 'reward-name';
+                const nameText = document.createElement('span');
+                nameText.textContent = reward.name;
+                name.appendChild(nameText);
+                if (owned > 0) {
+                    const count = document.createElement('span');
+                    count.className = 'reward-count';
+                    count.textContent = `${owned}×`;
+                    name.appendChild(count);
+                }
+                const desc = document.createElement('span');
+                desc.className = 'reward-desc';
+                desc.textContent = reward.desc;
+                info.append(name, desc);
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'reward-btn';
+                btn.disabled = !affordable;
+                btn.textContent = `${reward.cost} pts`;
+                btn.title = affordable ? `Tukar ${reward.name} dengan ${reward.cost} poin` : `Butuh ${reward.cost - points} poin lagi`;
+                btn.addEventListener('click', () => redeemReward(reward.id, btn));
+                item.append(icon, info, btn);
+                catalog.appendChild(item);
+            });
+
+            const summary = document.getElementById('redeemedSummary');
+            if (summary) {
+                summary.innerHTML = '';
+                if (!redemptions.length) {
+                    summary.textContent = 'Belum ada reward diklaim. Tukar poinmu mulai dari 30 pts.';
+                } else {
+                    const label = document.createElement('span');
+                    label.className = 'font-semibold';
+                    label.textContent = `Reward diklaim (${redemptions.length}): `;
+                    summary.appendChild(label);
+                    redemptions.slice(0, 3).forEach((entry, index) => {
+                        const chip = document.createElement('span');
+                        chip.className = 'redeemed-chip';
+                        chip.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+                        chip.appendChild(document.createTextNode(entry.name));
+                        summary.appendChild(chip);
+                        if (index < Math.min(redemptions.length, 3) - 1) summary.appendChild(document.createTextNode(' '));
+                    });
+                }
+            }
+
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const list = document.getElementById('leaderboardList');
+            if (!list) return;
+            const points = Math.max(0, Number(ecoState.points) || 0);
+            const redemptions = Array.isArray(ecoState.redemptions) ? ecoState.redemptions : [];
+            const rows = [];
+            const installed = new Set();
+
+            DEMO_LEADERS.forEach(entry => {
+                rows.push({ name: entry.name, points: entry.points, sub: `Contoh komunitas · ${entry.sub}`, me: false });
+                installed.add(entry.name.toLowerCase());
+            });
+
+            const authors = new Map();
+            hazardReports.forEach(report => {
+                const name = report.author && report.author.name ? String(report.author.name).trim() : '';
+                if (!name) return;
+                if (!currentUser && name.toLowerCase() === 'tamu') return;
+                if (currentUser && name.toLowerCase() === currentUser.name.trim().toLowerCase()) return;
+                const key = name.toLowerCase();
+                if (installed.has(key)) return;
+                const entry = authors.get(key) || {
+                    name,
+                    points: 0,
+                    count: 0,
+                    photo: report.author && report.author.photo ? report.author.photo : ''
+                };
+                entry.count += 1;
+                entry.points += 25;
+                authors.set(key, entry);
+            });
+            authors.forEach(entry => {
+                if (rows.some(row => row.name.toLowerCase() === entry.name.toLowerCase())) return;
+                rows.push({
+                    name: entry.name,
+                    points: entry.points,
+                    sub: `${entry.count} laporan warga · kontribusi cloud`,
+                    photo: entry.photo,
+                    me: false
+                });
+            });
+
+            rows.push({
+                name: currentUser ? currentUser.name : 'Kamu (Tamu)',
+                points,
+                sub: currentUser
+                    ? `${ecoState.reportCount || 0} laporan · ${redemptions.length} reward`
+                    : 'Masuk untuk menyinkronkan poin ke cloud',
+                photo: currentUser ? currentUser.photo : '',
+                me: true
+            });
+
+            rows.sort((a, b) => b.points - a.points || (a.me ? -1 : 1));
+            const meRow = rows.find(row => row.me);
+            let visible = rows.slice(0, 5);
+            if (meRow && !visible.includes(meRow)) visible = rows.slice(0, 4).concat([meRow]);
+
+            list.innerHTML = '';
+            visible.forEach(row => {
+                const index = rows.indexOf(row);
+                const el = document.createElement('div');
+                el.className = 'lb-row' + (row.me ? ' is-me' : '');
+
+                const rank = document.createElement('span');
+                rank.className = 'lb-rank' + (index < 3 ? ` top${index + 1}` : '');
+                rank.textContent = String(index + 1);
+
+                const avatar = document.createElement('span');
+                avatar.className = 'lb-avatar';
+                const photo = safePhotoUrl(row.photo);
+                if (photo) {
+                    const img = document.createElement('img');
+                    img.src = photo;
+                    img.alt = '';
+                    img.referrerPolicy = 'no-referrer';
+                    avatar.appendChild(img);
+                } else {
+                    avatar.textContent = initialsOf(row.name);
+                }
+
+                const info = document.createElement('span');
+                info.className = 'lb-info';
+                const name = document.createElement('span');
+                name.className = 'lb-name';
+                name.textContent = row.me ? `${row.name} (Kamu)` : row.name;
+                const sub = document.createElement('span');
+                sub.className = 'lb-sub';
+                sub.textContent = row.sub;
+                info.append(name, sub);
+
+                const score = document.createElement('span');
+                score.className = 'lb-points';
+                score.textContent = `${Math.round(row.points)} pts`;
+
+                el.append(rank, avatar, info, score);
+                list.appendChild(el);
+            });
+        }
+
+        function redeemReward(id, anchor) {
+            const reward = ECO_REWARDS.find(entry => entry.id === id);
+            if (!reward) return;
+            const points = Math.max(0, Number(ecoState.points) || 0);
+            if (points < reward.cost) {
+                showToast(`Poin belum cukup. Butuh ${reward.cost - points} poin lagi untuk ${reward.name}.`, 'warning');
+                return;
+            }
+            if (!window.confirm(`Tukar ${reward.cost} Eco Points untuk “${reward.name}”?`)) return;
+
+            ecoState.points -= reward.cost;
+            if (!Array.isArray(ecoState.redemptions)) ecoState.redemptions = [];
+            const code = `ECO-${reward.id.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+            ecoState.redemptions.unshift({ id: reward.id, name: reward.name, cost: reward.cost, ts: Date.now(), code });
+            if (ecoState.redemptions.length > 20) ecoState.redemptions.length = 20;
+
+            addHistory({ kind: 'reward', label: `Tukar reward: ${reward.name}`, pts: -reward.cost });
+            saveData();
+            updateUI();
+            playSound('success');
+            burstConfetti(45);
+            flyText(anchor, `-${reward.cost} Pts`);
+            showToast(`Reward “${reward.name}” berhasil ditukar. Kode: ${code}`, 'success');
+        }
+
         /* ---------- Report status & filters ---------- */
         function setReportFilter(filter) {
             reportFilter = filter;
@@ -2648,6 +3308,696 @@
             showToast(`Status laporan diubah ke “${STATUS_META[report.status].label}”.`, 'info');
         }
 
+        /* ---------- Emergency watch: live AQI & interactive hazard map ---------- */
+        const AQI_CITIES = [
+            { id: 'jakarta', name: 'Jakarta', region: 'DKI Jakarta', lat: -6.2088, lon: 106.8456, baseAqi: 118, basePm: 46 },
+            { id: 'yogyakarta', name: 'Yogyakarta', region: 'DI Yogyakarta', lat: -7.7956, lon: 110.3695, baseAqi: 92, basePm: 31 },
+            { id: 'bandung', name: 'Bandung', region: 'Jawa Barat', lat: -6.9175, lon: 107.6191, baseAqi: 78, basePm: 24 },
+            { id: 'surabaya', name: 'Surabaya', region: 'Jawa Timur', lat: -7.2575, lon: 112.7521, baseAqi: 86, basePm: 28 }
+        ];
+
+        const EMERGENCY_HOTSPOTS = [
+            { id: 'sarimukti', name: 'TPA Sarimukti', city: 'Bandung Barat', type: 'Darurat Sampah', severity: 'kritis', lat: -6.8167, lng: 107.3667, note: 'Timbunan melebihi kapasitas; risiko longsor dan kebakaran gas metana.' },
+            { id: 'citarum', name: 'Sungai Citarum', city: 'Karawang', type: 'Pencemaran Air', severity: 'tinggi', lat: -6.3000, lng: 107.3000, note: 'Aliran tercemar sampah domestik dan limbah industri.' },
+            { id: 'kali-code', name: 'Kali Code', city: 'Yogyakarta', type: 'Darurat Sampah', severity: 'tinggi', lat: -7.8000, lng: 110.3667, note: 'Sampah menyumbat aliran sungai dan memicu banjir saat hujan.' },
+            { id: 'benowo', name: 'TPA Benowo', city: 'Surabaya', type: 'Polusi Udara', severity: 'sedang', lat: -7.2333, lng: 112.6333, note: 'Bau dan emisi metana dari aktivitas penimbunan sampah.' }
+        ];
+
+        const JAVA_BOUNDS = { north: -5.5, south: -9.2, west: 105.0, east: 115.0 };
+
+        let aqiData = AQI_CITIES.map(city => ({ id: city.id, aqi: city.baseAqi, pm25: city.basePm, live: false }));
+        let aqiSelectedCity = 'jakarta';
+        let aqiFetching = false;
+        let aqiHasLiveData = false;
+        let aqiLastError = false;
+        let aqiUpdatedAt = null;
+        let aqiTimer = null;
+        let mapMarkMode = false;
+        let pendingMapPin = null;
+        let selectedMapPin = null;
+        let ecoMap = null;
+        let ecoMarkers = null;
+        let ecoPendingMarker = null;
+        let ecoMapFitted = false;
+        let ecoMapObserver = null;
+
+        function getAqiLevel(value) {
+            const v = Number(value) || 0;
+            if (v <= 50) return { label: 'Baik', cls: 'aqi-good', bar: 'good', advice: 'Kualitas udara baik. Aman untuk aktivitas luar ruangan.' };
+            if (v <= 100) return { label: 'Sedang', cls: 'aqi-mid', bar: 'mid', advice: 'Kelompok sensitif (anak, lansia, penderita asma) sebaiknya membatasi aktivitas luar 1–2 jam.' };
+            if (v <= 150) return { label: 'Sensitif', cls: 'aqi-poor', bar: 'poor', advice: 'Gunakan masker saat keluar rumah dan kurangi aktivitas fisik berat di luar ruangan.' };
+            if (v <= 200) return { label: 'Tidak Sehat', cls: 'aqi-bad', bar: 'bad', advice: 'Hindari aktivitas luar ruangan. Tutup ventilasi dan nyalakan pembersih udara bila tersedia.' };
+            if (v <= 300) return { label: 'Sangat Buruk', cls: 'aqi-severe', bar: 'severe', advice: 'Tetap di dalam ruangan dan gunakan masker N95 bila harus keluar. Waspadai gejala sesak napas.' };
+            return { label: 'Berbahaya', cls: 'aqi-severe', bar: 'severe', advice: 'Darurat udara. Hindari semua aktivitas luar ruangan dan ikuti arahan otoritas kesehatan.' };
+        }
+
+        function aqiTimeLabel(date) {
+            if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '--:--';
+            return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function getCityAqiData(id) {
+            return aqiData.find(item => item.id === id) || aqiData[0];
+        }
+
+        function selectAQICity(id) {
+            aqiSelectedCity = id;
+            renderAQI();
+            playSound('click');
+        }
+
+        function renderAQI() {
+            const list = document.getElementById('aqiCityList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            AQI_CITIES.forEach(city => {
+                const data = getCityAqiData(city.id);
+                const level = getAqiLevel(data.aqi);
+                const tile = document.createElement('button');
+                tile.type = 'button';
+                tile.className = 'aqi-tile' + (aqiSelectedCity === city.id ? ' active' : '');
+                tile.setAttribute('aria-pressed', aqiSelectedCity === city.id ? 'true' : 'false');
+                tile.addEventListener('click', () => selectAQICity(city.id));
+
+                const top = document.createElement('div');
+                top.className = 'aqi-tile-top';
+                const nameWrap = document.createElement('div');
+                const name = document.createElement('div');
+                name.className = 'aqi-city-name';
+                name.textContent = city.name;
+                const region = document.createElement('div');
+                region.className = 'aqi-region';
+                region.textContent = city.region;
+                nameWrap.append(name, region);
+                const badge = document.createElement('span');
+                badge.className = 'aqi-badge ' + level.cls;
+                badge.textContent = level.label;
+                top.append(nameWrap, badge);
+
+                const main = document.createElement('div');
+                main.className = 'aqi-main';
+                const value = document.createElement('span');
+                value.className = 'aqi-value';
+                value.textContent = Math.round(data.aqi);
+                const unit = document.createElement('span');
+                unit.className = 'aqi-unit';
+                unit.textContent = 'AQI';
+                const pm = document.createElement('span');
+                pm.className = 'aqi-pm';
+                pm.textContent = 'PM ' + Number(data.pm25).toFixed(0);
+                main.append(value, unit, pm);
+
+                const bar = document.createElement('div');
+                bar.className = 'aqi-bar';
+                const fill = document.createElement('span');
+                fill.className = 'aqi-bar-fill ' + level.bar;
+                fill.style.width = `${Math.min(100, Math.max(6, (Number(data.aqi) / 300) * 100))}%`;
+                bar.appendChild(fill);
+
+                tile.append(top, main, bar);
+                list.appendChild(tile);
+            });
+
+            const city = AQI_CITIES.find(item => item.id === aqiSelectedCity) || AQI_CITIES[0];
+            const data = getCityAqiData(city.id);
+            const level = getAqiLevel(data.aqi);
+            setText('aqiDetailCity', city.name);
+            setText('aqiDetailRegion', city.region);
+            setText('aqiDetailValue', Math.round(data.aqi));
+            setText('aqiDetailPm', `PM2.5 ${Number(data.pm25).toFixed(1)} µg/m³`);
+            setText('aqiDetailAdvice', level.advice);
+            setText('aqiDetailSource', data.live ? 'Sumber: Open-Meteo (live)' : 'Sumber: simulasi lokal');
+            setText('aqiDetailUpdated', aqiTimeLabel(aqiUpdatedAt));
+
+            const detailBadge = document.getElementById('aqiDetailBadge');
+            if (detailBadge) {
+                detailBadge.className = 'aqi-badge ' + level.cls;
+                detailBadge.textContent = level.label;
+            }
+            const detailBar = document.getElementById('aqiDetailBar');
+            if (detailBar) {
+                detailBar.className = 'aqi-bar-fill ' + level.bar;
+                detailBar.style.width = `${Math.min(100, Math.max(6, (Number(data.aqi) / 300) * 100))}%`;
+            }
+        }
+
+        function updateAQIStatusUI(mode) {
+            const badge = document.getElementById('aqiSourceBadge');
+            const icon = document.getElementById('aqiRefreshIcon');
+            const btn = document.getElementById('btnRefreshAqi');
+            if (btn) btn.disabled = mode === 'fetching';
+            if (icon) icon.classList.toggle('fa-spin', mode === 'fetching');
+
+            const states = {
+                connecting: ['MENGHUBUNGKAN', 'aqi-mid'],
+                fetching: ['MEMUAT AQI...', 'aqi-mid'],
+                live: ['LIVE · OPEN-METEO', 'aqi-good'],
+                stale: ['DATA TERAKHIR', 'aqi-mid'],
+                simulated: ['SIMULASI LOKAL', 'aqi-mid']
+            };
+            let state = states[mode] || states.simulated;
+            if (mode === 'live' && aqiLastError) state = ['LIVE · GAGAL REFRESH', 'aqi-mid'];
+            if (badge) {
+                badge.className = 'aqi-badge ' + state[1];
+                badge.textContent = state[0];
+            }
+            setText('aqiUpdatedAt', aqiTimeLabel(aqiUpdatedAt));
+        }
+
+        function simulateAQI() {
+            const now = Date.now();
+            aqiData = AQI_CITIES.map((city, index) => {
+                const wave = Math.round(Math.sin(now / 600000 + index * 1.7) * 6 + (Math.random() * 6 - 3));
+                const aqi = Math.max(28, city.baseAqi + wave);
+                return { id: city.id, aqi, pm25: Number((aqi / 2.2).toFixed(1)), live: false };
+            });
+            aqiUpdatedAt = new Date();
+        }
+
+        async function fetchAirQuality(manual) {
+            if (aqiFetching) return;
+            aqiFetching = true;
+            updateAQIStatusUI('fetching');
+
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 9000);
+            let finalMode = 'simulated';
+
+            try {
+                const lat = AQI_CITIES.map(city => city.lat).join(',');
+                const lon = AQI_CITIES.map(city => city.lon).join(',');
+                const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5,us_aqi&timezone=Asia%2FJakarta`;
+                const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const json = await res.json();
+                const rows = Array.isArray(json) ? json : [json];
+                let received = 0;
+
+                AQI_CITIES.forEach((city, index) => {
+                    const current = rows[index] && rows[index].current;
+                    const aqi = Number(current && current.us_aqi);
+                    const pm = Number(current && current.pm2_5);
+                    if (Number.isFinite(aqi) && aqi > 0) {
+                        const record = getCityAqiData(city.id);
+                        record.aqi = Math.round(aqi);
+                        record.pm25 = Number.isFinite(pm) ? Number(pm.toFixed(1)) : record.pm25;
+                        record.live = true;
+                        received += 1;
+                    }
+                });
+
+                if (!received) throw new Error('Data AQI kosong');
+                aqiHasLiveData = true;
+                aqiLastError = false;
+                aqiUpdatedAt = new Date();
+                finalMode = 'live';
+                if (manual) showToast('Data AQI terbaru berhasil dimuat dari Open-Meteo.', 'success');
+            } catch (err) {
+                aqiLastError = true;
+                if (!aqiHasLiveData) {
+                    simulateAQI();
+                    finalMode = 'simulated';
+                    if (manual) showToast('API AQI tidak dapat diakses — menampilkan simulasi lokal.', 'warning');
+                } else {
+                    finalMode = 'stale';
+                    if (manual) showToast('Gagal memperbarui AQI. Menampilkan data terakhir.', 'warning');
+                }
+            } finally {
+                clearTimeout(timeout);
+                aqiFetching = false;
+                renderAQI();
+                updateAQIStatusUI(finalMode);
+            }
+        }
+
+        function initEmergencyWatch() {
+            renderAQI();
+            updateAQIStatusUI('connecting');
+            initEcoMap();
+            renderEmergencyLayer();
+            fetchAirQuality(false);
+            if (aqiTimer) clearInterval(aqiTimer);
+            aqiTimer = setInterval(() => fetchAirQuality(false), 5 * 60 * 1000);
+        }
+
+        function initEcoMap() {
+            const container = document.getElementById('leafletMap');
+            const fallback = document.getElementById('mapFallback');
+            if (!container) return;
+            if (!window.L) {
+                if (fallback) fallback.classList.remove('hidden');
+                return;
+            }
+            if (ecoMap) {
+                syncEcoMapSize();
+                return;
+            }
+            try {
+                ecoMap = L.map(container, {
+                    zoomControl: true,
+                    minZoom: 5,
+                    maxZoom: 18,
+                    center: [-7.3, 110.0],
+                    zoom: 6,
+                    scrollWheelZoom: false,
+                    attributionControl: true
+                });
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                    subdomains: 'abcd',
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>'
+                }).addTo(ecoMap);
+                ecoMarkers = L.layerGroup().addTo(ecoMap);
+                ecoMap.on('click', handleMapClick);
+                ['mapPinForm', 'mapPinInfo'].forEach(id => {
+                    const node = document.getElementById(id);
+                    if (node) L.DomEvent.disableClickPropagation(node);
+                });
+                if (fallback) fallback.classList.add('hidden');
+
+                if (typeof ResizeObserver !== 'undefined') {
+                    ecoMapObserver = new ResizeObserver(() => syncEcoMapSize());
+                    ecoMapObserver.observe(container);
+                }
+                window.addEventListener('resize', syncEcoMapSize);
+                [0, 250, 900].forEach(delay => setTimeout(syncEcoMapSize, delay));
+            } catch (err) {
+                ecoMap = null;
+                ecoMarkers = null;
+                ecoMapFitted = false;
+                if (fallback) fallback.classList.remove('hidden');
+            }
+        }
+
+        function syncEcoMapSize() {
+            if (!ecoMap) return;
+            const container = document.getElementById('leafletMap');
+            if (!container) return;
+            // Peta bisa saja dibuat saat kontainer masih 0x0 (mis. tab tersembunyi).
+            if (container.offsetWidth < 40 || container.offsetHeight < 40) return;
+            ecoMap.invalidateSize();
+            if (!ecoMapFitted) {
+                ecoMap.fitBounds([[-9.1, 105.0], [-5.7, 114.8]], { padding: [24, 24], maxZoom: 8 });
+                ecoMapFitted = true;
+            }
+        }
+
+        function validLatLng(lat, lng) {
+            return Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+        }
+
+        function getReportLatLng(report) {
+            if (!report) return null;
+            const lat = Number(report.lat);
+            const lng = Number(report.lng);
+            if (validLatLng(lat, lng)) return { lat, lng };
+            const x = Number(report.mapX);
+            const y = Number(report.mapY);
+            if (Number.isFinite(x) && Number.isFinite(y)) {
+                return {
+                    lat: JAVA_BOUNDS.north - (Math.min(100, Math.max(0, y)) / 100) * (JAVA_BOUNDS.north - JAVA_BOUNDS.south),
+                    lng: JAVA_BOUNDS.west + (Math.min(100, Math.max(0, x)) / 100) * (JAVA_BOUNDS.east - JAVA_BOUNDS.west)
+                };
+            }
+            return null;
+        }
+
+        function hasMapCoords(report) {
+            return !!getReportLatLng(report);
+        }
+
+        function mapPinReports() {
+            return hazardReports.filter(hasMapCoords).slice(0, 30);
+        }
+
+        function createLeafletMarker(item) {
+            const pin = document.createElement('div');
+            pin.className = `eco-leaf-pin ${item.kind} ${item.severity || 'sedang'}`;
+            if (selectedMapPin && selectedMapPin.kind === item.kind && String(selectedMapPin.id) === String(item.id)) {
+                pin.classList.add('is-active');
+            }
+
+            const bubble = document.createElement('span');
+            bubble.className = 'pin-bubble';
+            const icon = document.createElement('i');
+            icon.className = 'fa-solid ' + (item.kind === 'hotspot' ? 'fa-triangle-exclamation' : 'fa-location-dot');
+            bubble.appendChild(icon);
+            const label = document.createElement('span');
+            label.className = 'pin-label';
+            label.textContent = item.name;
+            pin.append(bubble, label);
+
+            const marker = L.marker([item.lat, item.lng], {
+                title: `${item.kind === 'hotspot' ? 'Titik darurat' : 'Laporan warga'}: ${item.name}`,
+                riseOnHover: true,
+                icon: L.divIcon({
+                    className: 'eco-map-icon',
+                    html: pin,
+                    iconSize: [160, 44],
+                    iconAnchor: [80, 26]
+                })
+            });
+            marker.on('click', () => {
+                selectedMapPin = { kind: item.kind, id: item.id };
+                renderEmergencyLayer();
+            });
+            return marker;
+        }
+
+        function renderEmergencyLayer() {
+            if (ecoMap && ecoMarkers) {
+                ecoMarkers.clearLayers();
+                EMERGENCY_HOTSPOTS.forEach(hotspot => {
+                    ecoMarkers.addLayer(createLeafletMarker({
+                        kind: 'hotspot', id: hotspot.id, name: hotspot.name,
+                        lat: hotspot.lat, lng: hotspot.lng, severity: hotspot.severity
+                    }));
+                });
+                mapPinReports().forEach(report => {
+                    const coords = getReportLatLng(report);
+                    ecoMarkers.addLayer(createLeafletMarker({
+                        kind: 'report', id: report.id, name: report.loc,
+                        lat: coords.lat, lng: coords.lng, severity: report.severity || 'sedang'
+                    }));
+                });
+            }
+
+            renderMapPinInfo();
+            renderEmergencyAlerts();
+        }
+
+        function renderEmergencyAlerts() {
+            const wrap = document.getElementById('emergencyAlerts');
+            if (!wrap) return;
+            const items = EMERGENCY_HOTSPOTS.map(hotspot => ({
+                kind: 'hotspot', id: hotspot.id, name: hotspot.name,
+                sub: `${hotspot.city} · ${hotspot.type}`, severity: hotspot.severity
+            })).concat(mapPinReports().slice(0, 8).map(report => ({
+                kind: 'report', id: report.id, name: report.loc,
+                sub: `Laporan warga · ${STATUS_META[report.status || 'baru'].label}`,
+                severity: report.severity || 'sedang'
+            })));
+
+            const countEl = document.getElementById('emergencyCount');
+            if (countEl) countEl.textContent = `${items.length} titik`;
+            wrap.innerHTML = '';
+
+            if (!items.length) {
+                const empty = document.createElement('div');
+                empty.className = 'text-[10px] text-rose-600/70 text-center py-2';
+                empty.textContent = 'Belum ada titik darurat terpantau.';
+                wrap.appendChild(empty);
+                return;
+            }
+
+            items.forEach(item => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'em-alert';
+                const dot = document.createElement('span');
+                dot.className = 'em-dot ' + (item.severity || 'sedang');
+                const info = document.createElement('span');
+                info.className = 'em-info';
+                const name = document.createElement('span');
+                name.className = 'em-name';
+                name.textContent = item.name;
+                const sub = document.createElement('span');
+                sub.className = 'em-sub';
+                sub.textContent = item.sub;
+                info.append(name, sub);
+                row.append(dot, info);
+                row.addEventListener('click', () => focusMapPin(item.kind, item.id));
+                wrap.appendChild(row);
+            });
+        }
+
+        function focusMapPin(kind, id) {
+            selectedMapPin = { kind, id };
+            renderEmergencyLayer();
+            let coords = null;
+            if (kind === 'hotspot') {
+                const hotspot = EMERGENCY_HOTSPOTS.find(entry => entry.id === id);
+                if (hotspot) coords = { lat: hotspot.lat, lng: hotspot.lng };
+            } else {
+                coords = getReportLatLng(hazardReports.find(entry => String(entry.id) === String(id)));
+            }
+            if (ecoMap && coords) {
+                ecoMap.flyTo([coords.lat, coords.lng], Math.max(9, ecoMap.getZoom()), { duration: reduceMotion ? 0 : 0.7 });
+            }
+            const map = document.getElementById('emergencyMap');
+            if (map) map.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+        }
+
+        function renderMapPinInfo() {
+            const panel = document.getElementById('mapPinInfo');
+            if (!panel) return;
+            let item = null;
+
+            if (selectedMapPin && selectedMapPin.kind === 'hotspot') {
+                const hotspot = EMERGENCY_HOTSPOTS.find(entry => entry.id === selectedMapPin.id);
+                if (hotspot) item = { kind: 'hotspot', data: hotspot };
+            } else if (selectedMapPin && selectedMapPin.kind === 'report') {
+                const report = hazardReports.find(entry => String(entry.id) === String(selectedMapPin.id));
+                if (report) item = { kind: 'report', data: report };
+            }
+
+            if (!item) {
+                if (selectedMapPin) selectedMapPin = null;
+                panel.classList.add('hidden');
+                panel.innerHTML = '';
+                return;
+            }
+
+            const { kind, data } = item;
+            const severity = data.severity || 'sedang';
+            const severityLabel = { kritis: 'Kritis', tinggi: 'Tinggi', sedang: 'Sedang' }[severity] || 'Sedang';
+
+            panel.innerHTML = '';
+            panel.classList.remove('hidden');
+
+            const box = document.createElement('div');
+            box.className = 'map-info';
+
+            const head = document.createElement('div');
+            head.className = 'map-info-head';
+            const chip = document.createElement('span');
+            chip.className = 'map-info-chip ' + (kind === 'hotspot' ? 'hot' : 'user');
+            chip.textContent = kind === 'hotspot' ? 'Titik Darurat' : 'Laporan Warga';
+            const close = document.createElement('button');
+            close.type = 'button';
+            close.className = 'map-info-btn';
+            close.setAttribute('aria-label', 'Tutup detail titik');
+            close.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+            close.addEventListener('click', () => {
+                selectedMapPin = null;
+                renderEmergencyLayer();
+            });
+            head.append(chip, close);
+
+            const title = document.createElement('div');
+            title.className = 'map-info-title';
+            title.textContent = kind === 'hotspot' ? data.name : data.loc;
+
+            const sub = document.createElement('div');
+            sub.className = 'map-info-sub';
+            sub.textContent = kind === 'hotspot'
+                ? `${data.city} · ${data.type}`
+                : `Pelapor: ${(data.author && data.author.name) || 'Warga'}`;
+
+            const note = document.createElement('div');
+            note.className = 'map-info-note';
+            note.textContent = kind === 'hotspot'
+                ? data.note
+                : (data.desc || 'Titik darurat yang ditandai melalui peta komunitas.');
+
+            const coords = kind === 'hotspot'
+                ? { lat: data.lat, lng: data.lng }
+                : getReportLatLng(data);
+            const coordsEl = document.createElement('span');
+            coordsEl.className = 'map-info-coords';
+            coordsEl.textContent = coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : '';
+
+            const actions = document.createElement('div');
+            actions.className = 'map-info-actions';
+            const sev = document.createElement('span');
+            sev.className = 'map-info-sev sev-' + severity;
+            sev.textContent = 'Prioritas ' + severityLabel;
+            actions.appendChild(sev);
+
+            if (kind === 'report') {
+                const statusBtn = document.createElement('button');
+                statusBtn.type = 'button';
+                statusBtn.className = 'map-info-btn';
+                statusBtn.textContent = 'Status: ' + STATUS_META[data.status || 'baru'].label;
+                statusBtn.addEventListener('click', () => cycleReportStatus(data.id));
+                actions.appendChild(statusBtn);
+
+                const listBtn = document.createElement('button');
+                listBtn.type = 'button';
+                listBtn.className = 'map-info-btn';
+                listBtn.textContent = 'Lihat Daftar';
+                listBtn.addEventListener('click', () => {
+                    setReportFilter('all');
+                    const list = document.getElementById('reportsList');
+                    if (list) list.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+                });
+                actions.appendChild(listBtn);
+            }
+
+            box.append(head, title, sub, note, coordsEl, actions);
+            panel.appendChild(box);
+        }
+
+        function setMapMarkMode(on) {
+            mapMarkMode = !!on;
+            const map = document.getElementById('emergencyMap');
+            const btn = document.getElementById('btnToggleMark');
+            const label = document.getElementById('mapMarkBtnLabel');
+            const hint = document.getElementById('mapMarkHint');
+            if (map) map.classList.toggle('is-marking', mapMarkMode);
+            if (btn) btn.classList.toggle('active', mapMarkMode);
+            if (label) label.textContent = mapMarkMode ? 'Selesai Menandai' : 'Tandai Titik';
+            if (hint) hint.classList.toggle('hidden', !mapMarkMode);
+            if (!mapMarkMode) closeMapPinForm();
+        }
+
+        function toggleMapMarkMode() {
+            if (mapMarkMode) {
+                setMapMarkMode(false);
+                showToast('Mode tandai ditutup.', 'info');
+                return;
+            }
+            setMapMarkMode(true);
+            selectedMapPin = null;
+            renderEmergencyLayer();
+            playSound('click');
+            showToast('Mode tandai aktif. Klik lokasi pada peta untuk menambahkan titik darurat.', 'info');
+        }
+
+        function closeMapPinForm() {
+            pendingMapPin = null;
+            const form = document.getElementById('mapPinForm');
+            if (form) form.classList.add('hidden');
+            if (ecoPendingMarker && ecoMap) {
+                ecoMap.removeLayer(ecoPendingMarker);
+            }
+            ecoPendingMarker = null;
+        }
+
+        function cancelMapPin() {
+            closeMapPinForm();
+            setMapMarkMode(false);
+            renderMapPinInfo();
+        }
+
+        function handleMapClick(event) {
+            if (!mapMarkMode || !event || !event.latlng) return;
+            const lat = Number(event.latlng.lat.toFixed(5));
+            const lng = Number(event.latlng.lng.toFixed(5));
+            if (!validLatLng(lat, lng)) return;
+
+            pendingMapPin = { lat, lng };
+            if (ecoPendingMarker && ecoMap) ecoMap.removeLayer(ecoPendingMarker);
+            if (ecoMap && window.L) {
+                ecoPendingMarker = L.marker([lat, lng], {
+                    interactive: false,
+                    keyboard: false,
+                    icon: L.divIcon({
+                        className: 'eco-map-pending',
+                        html: '<div class="eco-pending"></div>',
+                        iconSize: [20, 20],
+                        iconAnchor: [10, 10]
+                    })
+                }).addTo(ecoMap);
+            }
+
+            const form = document.getElementById('mapPinForm');
+            const info = document.getElementById('mapPinInfo');
+            const coords = document.getElementById('pinCoords');
+            if (info) info.classList.add('hidden');
+            if (form) {
+                form.reset();
+                form.classList.remove('hidden');
+            }
+            if (coords) coords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            const locationInput = document.getElementById('pinLocation');
+            if (locationInput) locationInput.focus();
+        }
+
+        function saveMapPin(event) {
+            event.preventDefault();
+            if (!pendingMapPin) {
+                showToast('Klik lokasi pada peta terlebih dahulu.', 'warning');
+                return;
+            }
+            const loc = document.getElementById('pinLocation').value.trim();
+            if (!loc) {
+                showToast('Lengkapi lokasi titik darurat terlebih dahulu.', 'warning');
+                return;
+            }
+            const type = document.getElementById('pinType').value;
+            const severity = document.getElementById('pinSeverity').value;
+            const note = document.getElementById('pinNote').value.trim();
+            const author = currentUser
+                ? { name: currentUser.name, email: currentUser.email, uid: currentUser.uid || '', photo: currentUser.photo || '' }
+                : { name: 'Tamu', email: '', uid: '', photo: '' };
+
+            const report = {
+                id: Date.now(),
+                type,
+                loc,
+                desc: note || `Titik ${type.toLowerCase()} ditandai melalui peta komunitas.`,
+                status: 'baru',
+                date: new Date().toLocaleDateString('id-ID'),
+                ts: Date.now(),
+                author,
+                severity,
+                lat: pendingMapPin.lat,
+                lng: pendingMapPin.lng,
+                source: 'map'
+            };
+
+            hazardReports.unshift(report);
+            ecoState.reportCount += 1;
+            ecoState.points += 25;
+            reportFilter = 'all';
+            selectedMapPin = { kind: 'report', id: report.id };
+
+            addHistory({ kind: 'report', label: `Peta: ${type}`, pts: 25 });
+            bumpMission('report');
+            saveData();
+            updateUI();
+            playSound('success');
+
+            const submitBtn = event.submitter || document.querySelector('#mapPinForm button[type="submit"]');
+            flyText(submitBtn, '+25 Pts');
+            const pointsBox = document.getElementById('statPointsBox');
+            pointsBox.classList.add('pulse-bump');
+            setTimeout(() => pointsBox.classList.remove('pulse-bump'), 600);
+
+            closeMapPinForm();
+            setMapMarkMode(false);
+            renderEmergencyLayer();
+            showToast(`Titik darurat “${loc}” ditambahkan ke peta & laporan warga.`, 'success');
+
+            if (cloudActive()) {
+                window.EcoCloud.saveReport(report)
+                    .then(cloudId => {
+                        report.cloudId = cloudId;
+                        saveData();
+                        renderReports();
+                        showToast('Titik darurat tersinkron ke cloud.', 'success');
+                    })
+                    .catch(() => {
+                        report.pendingCloud = true;
+                        saveData();
+                        renderReports();
+                        showToast('Titik tersimpan lokal. Sinkron cloud gagal — periksa koneksi atau aturan Firestore.', 'warning');
+                    });
+            }
+        }
+
         /* UI Sync & LocalStorage */
         function updateUI() {
             animateValue(document.getElementById('headerCO2'), ecoState.totalCO2, 1, 550);
@@ -2661,11 +4011,13 @@
             renderJournal();
             updateEcoScore();
             renderFootprintSaved();
+            renderRewards();
         }
 
         function renderReports() {
             const listEl = document.getElementById('reportsList');
             if (!listEl) return;
+            renderEmergencyLayer();
 
             const counts = { all: hazardReports.length, baru: 0, proses: 0, selesai: 0 };
             hazardReports.forEach(r => {
@@ -2759,6 +4111,7 @@
                 card.append(head, loc, desc, authorRow, footer);
                 listEl.appendChild(card);
             });
+            renderLeaderboard();
         }
 
         function removeReport(id) {
@@ -2839,6 +4192,7 @@
                     ecoState.missions || {}
                 );
                 if (!Array.isArray(ecoState.history)) ecoState.history = [];
+                if (!Array.isArray(ecoState.redemptions)) ecoState.redemptions = [];
                 if (!Array.isArray(ecoState.unlocked)) ecoState.unlocked = null;
             }
 
@@ -2867,6 +4221,10 @@
             hazardReports = [];
             lastAnalyzedObject = null;
             reportFilter = 'all';
+            selectedMapPin = null;
+            pendingMapPin = null;
+            setMapMarkMode(false);
+            closeMapPinForm();
 
             document.getElementById('resTitle').textContent = 'Silakan Ambil Foto / Scan';
             document.getElementById('resConfidence').textContent = 'Akurasi AI: -';
@@ -2907,9 +4265,10 @@
             }
 
             const esc = (value) => `"${String(value).replace(/"/g, '""')}"`;
-            const rows = ['ID,Tanggal,Jenis Masalah,Lokasi,Deskripsi,Status,Pengirim,Email Pengirim,Sumber'];
+            const rows = ['ID,Tanggal,Jenis Masalah,Lokasi,Deskripsi,Status,Pengirim,Email Pengirim,Latitude,Longitude,Sumber'];
             hazardReports.forEach(r => {
                 const author = r.author || {};
+                const coords = getReportLatLng(r);
                 rows.push([
                     r.id,
                     r.date,
@@ -2919,6 +4278,8 @@
                     STATUS_META[r.status || 'baru'].label,
                     author.name || 'Warga',
                     author.email || '',
+                    coords ? coords.lat.toFixed(5) : '',
+                    coords ? coords.lng.toFixed(5) : '',
                     r.cloudId ? 'Cloud' : 'Lokal'
                 ].map(esc).join(','));
             });
@@ -3219,6 +4580,23 @@
                     authorUid: String(auth.currentUser.uid),
                     authorPhoto: String(author.photo || auth.currentUser.photoURL || '')
                 };
+                const lat = Number(report.lat);
+                const lng = Number(report.lng);
+                const hasGeo = Number.isFinite(lat) && Number.isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+                const mapX = Number(report.mapX);
+                const mapY = Number(report.mapY);
+                const hasLegacy = Number.isFinite(mapX) && Number.isFinite(mapY) && mapX >= 0 && mapX <= 100 && mapY >= 0 && mapY <= 100;
+                if (hasGeo || hasLegacy) {
+                    if (hasGeo) {
+                        payload.lat = lat;
+                        payload.lng = lng;
+                    } else {
+                        payload.mapX = mapX;
+                        payload.mapY = mapY;
+                    }
+                    payload.severity = ['sedang', 'tinggi', 'kritis'].includes(report.severity) ? report.severity : 'tinggi';
+                    payload.source = 'map';
+                }
                 const ref = await fsMod.addDoc(fsMod.collection(db, 'reports'), payload);
                 return ref.id;
             },
@@ -3233,7 +4611,7 @@
                 await fsMod.deleteDoc(fsMod.doc(db, 'reports', cloudId));
             },
 
-            async syncJournal(history) {
+            async syncJournal(history, points, redemptions) {
                 if (!this.ready || !fsMod || !db || !auth.currentUser) return;
                 const clean = (Array.isArray(history) ? history : []).slice(0, 60).map(entry => ({
                     ts: Number(entry.ts) || Date.now(),
@@ -3243,9 +4621,20 @@
                     waste: Number(entry.waste) || 0,
                     pts: Number(entry.pts) || 0
                 }));
+                const payload = { history: clean, updatedAt: fsMod.serverTimestamp() };
+                if (Number.isFinite(Number(points))) payload.points = Math.max(0, Math.round(Number(points)));
+                if (Array.isArray(redemptions)) {
+                    payload.redemptions = redemptions.slice(0, 20).map(entry => ({
+                        id: String(entry.id || ''),
+                        name: String(entry.name || ''),
+                        cost: Math.max(0, Number(entry.cost) || 0),
+                        ts: Number(entry.ts) || Date.now(),
+                        code: String(entry.code || '')
+                    }));
+                }
                 await fsMod.setDoc(
                     fsMod.doc(db, 'users', auth.currentUser.uid),
-                    { history: clean, updatedAt: fsMod.serverTimestamp() },
+                    payload,
                     { merge: true }
                 );
             }
