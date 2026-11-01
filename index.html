@@ -1279,6 +1279,9 @@
             .clean-card:hover, .kpi-card:hover { transform: none; }
         }
     </style>
+    <!-- Cyber-Ecology PWA install styles & controller -->
+    <link rel="stylesheet" href="style.css">
+    <script defer src="app.js"></script>
 </head>
 <body class="min-h-screen flex flex-col pb-12">
 
@@ -1310,8 +1313,9 @@
                     <i class="fa-solid fa-rotate-left"></i>
                 </button>
 
-                <button id="btnInstallApp" onclick="promptInstallApp()" class="hidden items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-400/40 text-emerald-200 hover:text-emerald-50 hover:border-emerald-300/70 hover:shadow-[0_0_18px_rgba(0,255,135,0.35)] text-xs font-bold transition">
-                    <i class="fa-solid fa-arrow-down-to-bracket"></i> Install App
+                <button id="install-pwa-btn" type="button" class="install-pwa-btn" aria-label="Instal aplikasi EcoVision AI" aria-hidden="true" title="Pasang EcoVision AI di perangkatmu">
+                    <i class="fa-solid fa-arrow-down-to-bracket" aria-hidden="true"></i>
+                    <span>Instal Aplikasi</span>
                 </button>
 
                 <!-- SESSION / USER AREA -->
@@ -2249,6 +2253,95 @@
         </div>
     </div>
 
+    <!-- PWA INSTALL BANNER -->
+    <aside id="pwaInstallBanner" class="pwa-banner" role="complementary" aria-label="Tawaran instalasi EcoVision AI" aria-hidden="true" inert>
+        <div class="pwa-banner-icon" aria-hidden="true">
+            <img src="assets/icons/icon-192.png" alt="" width="46" height="46" loading="lazy">
+        </div>
+        <div class="pwa-banner-copy">
+            <span class="pwa-eyebrow"><i class="fa-solid fa-bolt" aria-hidden="true"></i> Instalasi PWA · Gratis</span>
+            <strong>Bawa EcoVision AI ke layar utama</strong>
+            <p>Akses EcoScan AI, peta bahaya, dan Eco-Rewards tanpa membuka browser.</p>
+        </div>
+        <div class="pwa-banner-actions">
+            <button type="button" id="pwaBannerInstall" class="pwa-btn pwa-btn-primary">
+                <i class="fa-solid fa-arrow-down-to-bracket" aria-hidden="true"></i> Instal
+            </button>
+            <button type="button" id="pwaBannerGuide" class="pwa-btn pwa-btn-ghost">Petunjuk</button>
+        </div>
+        <button type="button" id="pwaBannerClose" class="pwa-banner-close" aria-label="Tutup tawaran instalasi">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+    </aside>
+
+    <!-- PWA INSTALL INSTRUCTIONS MODAL -->
+    <div id="pwaInstallModal" class="pwa-modal" role="dialog" aria-modal="true" aria-labelledby="pwaModalTitle" aria-hidden="true" inert>
+        <div class="pwa-modal-backdrop" data-pwa-close></div>
+        <section class="pwa-modal-panel">
+            <div class="pwa-modal-head">
+                <div class="pwa-modal-brand">
+                    <div class="pwa-modal-icon" aria-hidden="true">
+                        <img src="assets/icons/icon-192.png" alt="" width="44" height="44">
+                    </div>
+                    <div>
+                        <span class="pwa-eyebrow">Cyber-Ecology · PWA</span>
+                        <h2 id="pwaModalTitle">Instal EcoVision AI</h2>
+                        <p>Tanpa Play Store atau App Store — pasang langsung dari browser.</p>
+                    </div>
+                </div>
+                <button type="button" id="pwaModalClose" class="pwa-icon-btn" aria-label="Tutup petunjuk instalasi">
+                    <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                </button>
+            </div>
+
+            <div class="pwa-tablist" role="tablist" aria-label="Pilih perangkat untuk petunjuk instalasi">
+                <button type="button" class="pwa-tab" role="tab" data-pwa-tab="android" aria-selected="false" tabindex="-1">
+                    <i class="fa-brands fa-android" aria-hidden="true"></i> Android
+                </button>
+                <button type="button" class="pwa-tab" role="tab" data-pwa-tab="ios" aria-selected="false" tabindex="-1">
+                    <i class="fa-brands fa-apple" aria-hidden="true"></i> iPhone
+                </button>
+                <button type="button" class="pwa-tab" role="tab" data-pwa-tab="desktop" aria-selected="false" tabindex="-1">
+                    <i class="fa-solid fa-desktop" aria-hidden="true"></i> Komputer
+                </button>
+            </div>
+
+            <div class="pwa-panels">
+                <div class="pwa-panel" data-pwa-panel="android" role="tabpanel">
+                    <div class="pwa-step"><span class="pwa-step-num">1</span><p>Ketuk <strong>Instal Aplikasi</strong> di kanan atas, lalu pilih <strong>Instal</strong>.</p></div>
+                    <div class="pwa-step"><span class="pwa-step-num">2</span><p>Alternatif: buka menu <strong>⋮</strong> Chrome → <strong>Instal aplikasi</strong> / <strong>Tambahkan ke Layar Utama</strong>.</p></div>
+                    <div class="pwa-step"><span class="pwa-step-num">3</span><p>Buka EcoVision AI dari ikon layar utama — tampil penuh tanpa address bar.</p></div>
+                </div>
+                <div class="pwa-panel" data-pwa-panel="ios" role="tabpanel">
+                    <div class="pwa-step"><span class="pwa-step-num">1</span><p>Di Safari, ketuk ikon <strong>Bagikan</strong> (kotak dengan panah ke atas).</p></div>
+                    <div class="pwa-step"><span class="pwa-step-num">2</span><p>Gulir menu dan pilih <strong>Tambahkan ke Layar Utama</strong>.</p></div>
+                    <div class="pwa-step"><span class="pwa-step-num">3</span><p>Ketuk <strong>Tambah</strong>; ikon EcoVision AI muncul di Home Screen.</p></div>
+                </div>
+                <div class="pwa-panel" data-pwa-panel="desktop" role="tabpanel">
+                    <div class="pwa-step"><span class="pwa-step-num">1</span><p>Klik ikon <strong>instal</strong> di kanan address bar Chrome/Edge.</p></div>
+                    <div class="pwa-step"><span class="pwa-step-num">2</span><p>Atau buka menu <strong>⋮</strong> → <strong>Install EcoVision AI</strong>.</p></div>
+                    <div class="pwa-step"><span class="pwa-step-num">3</span><p>Aplikasi berjalan sebagai jendela mandiri, terasa seperti aplikasi desktop.</p></div>
+                </div>
+            </div>
+
+            <p id="pwaReadyNote" class="pwa-note" aria-live="polite">
+                <i class="fa-solid fa-circle-info" aria-hidden="true"></i> Pilih tab perangkat untuk melihat langkah instalasi.
+            </p>
+
+            <div class="pwa-modal-actions">
+                <button type="button" id="pwaModalInstall" class="pwa-btn pwa-btn-primary pwa-btn-block">
+                    <i class="fa-solid fa-arrow-down-to-bracket" aria-hidden="true"></i> Instal Sekarang
+                </button>
+                <button type="button" id="pwaModalDone" class="pwa-btn pwa-btn-ghost pwa-btn-block">Nanti Saja</button>
+            </div>
+
+            <p class="pwa-footnote">
+                <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
+                Aman &amp; ringan. Login Firebase, peta Leaflet, dan seluruh data tetap berjalan seperti biasa.
+            </p>
+        </section>
+    </div>
+
     <!-- TOASTS & CONFETTI LAYER -->
     <div id="toastWrap" class="toast-wrap" aria-live="polite"></div>
     <canvas id="fxCanvas"></canvas>
@@ -3012,63 +3105,7 @@
             document.getElementById('sfxLabel').innerText = audioEnabled ? 'SFX: Aktif' : 'SFX: Muted';
         }
 
-        /* ---------- PWA: install prompt & service worker ---------- */
-        let deferredInstallPrompt = null;
-
-        function isStandaloneMode() {
-            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-        }
-
-        function showInstallUi(show) {
-            const btn = document.getElementById('btnInstallApp');
-            if (!btn) return;
-            const visible = !!show && !isStandaloneMode();
-            btn.classList.toggle('hidden', !visible);
-            btn.classList.toggle('flex', visible);
-        }
-
-        function initPwa() {
-            if (isStandaloneMode()) return;
-            if (/^https?:$/.test(location.protocol)) showInstallUi(true);
-            if (/iphone|ipad|ipod/i.test(navigator.userAgent)) showInstallUi(true);
-            if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-                navigator.serviceWorker.register('sw.js').catch(() => {});
-            }
-        }
-
-        window.addEventListener('beforeinstallprompt', event => {
-            event.preventDefault();
-            deferredInstallPrompt = event;
-            showInstallUi(true);
-        });
-
-        window.addEventListener('appinstalled', () => {
-            deferredInstallPrompt = null;
-            showInstallUi(false);
-            showToast('EcoVision AI berhasil dipasang. Buka dari layar utama perangkatmu.', 'success');
-        });
-
-        async function promptInstallApp() {
-            if (deferredInstallPrompt) {
-                deferredInstallPrompt.prompt();
-                try {
-                    const choice = await deferredInstallPrompt.userChoice;
-                    if (choice && choice.outcome === 'accepted') showToast('Instalasi EcoVision AI dimulai…', 'success');
-                } catch (e) {}
-                deferredInstallPrompt = null;
-                showInstallUi(false);
-                return;
-            }
-            if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
-                showToast('Di Safari: ketuk ikon Bagikan → “Tambahkan ke Layar Utama”.', 'info');
-                return;
-            }
-            if (!/^https?:$/.test(location.protocol)) {
-                showToast('PWA perlu dijalankan via http/https (hosting) agar dapat dipasang.', 'warning');
-                return;
-            }
-            showToast('Buka menu browser → “Install app / Add to Home Screen”.', 'info');
-        }
+        /* PWA install prompt, banner, and service worker live in app.js. */
 
         /* Initial Setup */
         window.onload = function() {
@@ -3076,7 +3113,6 @@
             loadSavedData();
             loadSession();
             initCloud();
-            initPwa();
             const heroDateEl = document.getElementById('heroDate');
             if (heroDateEl) {
                 heroDateEl.textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
